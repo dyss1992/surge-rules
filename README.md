@@ -10,8 +10,10 @@ It works by rewriting Notion HTTPS traffic after Surge MITM decryption:
 
 - response data containing `collection_view` records is normalized to `collection_peek_mode: "center_peek"`
 - request data that tries to save `side_peek` or `full_page` for a collection view is normalized back to `center_peek`
-- Notion peek URLs using `pm=s` are changed to `pm=c`
+- Notion peek URLs using `pm=s` or `pm=f` are changed to `pm=c`
 - Notion frontend asset defaults for side peek are patched toward center peek when they are present in matched assets
+
+The request-side rule is intentionally limited to Notion's save endpoint and peek URLs so unrelated Notion API calls are not marked as modified in Surge.
 
 ### Install
 

@@ -9,6 +9,8 @@ const vm = require("vm");
 
 const scriptPath = path.join(__dirname, "..", "scripts", "notion-center-peek.js");
 const source = fs.readFileSync(scriptPath, "utf8");
+const modulePath = path.join(__dirname, "..", "modules", "notion-center-peek.sgmodule");
+const moduleSource = fs.readFileSync(modulePath, "utf8");
 
 function runSurgeScript({ request, response }) {
   let doneValue;
@@ -82,6 +84,27 @@ assert.equal(
   "center_peek",
 );
 
+const unrelatedRecordMapResponse = {
+  recordMap: {
+    block: {
+      x: {
+        role: "reader",
+        value: {
+          id: "x",
+          type: "text",
+          format: { block_color: "default" },
+        },
+      },
+    },
+  },
+};
+
+const unrelatedResult = runSurgeScript({
+  request: { url: "https://www.notion.so/api/v3/getActiveThreadsForBlocks", method: "POST" },
+  response: { status: 200, headers: {}, body: JSON.stringify(unrelatedRecordMapResponse) },
+});
+assert.deepEqual(unrelatedResult, {}, "unrelated record values should not be patched");
+
 const transaction = {
   requestId: "x",
   transactions: [
@@ -120,6 +143,14 @@ const urlResult = runSurgeScript({
 });
 assert.equal(urlResult.url, "https://www.notion.so/example?p=abc&pm=c");
 
+const fullPageUrlResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/example?p=abc&pm=f",
+    method: "GET",
+  },
+});
+assert.equal(fullPageUrlResult.url, "https://www.notion.so/example?p=abc&pm=c");
+
 const assetBody =
   'x;let i={table:"side_peek",board:"side_peek",calendar:"center_peek",list:"side_peek",gallery:"center_peek",timeline:"side_peek",page:"side_peek",chat:"side_peek"};y';
 const assetResult = runSurgeScript({
@@ -129,5 +160,12 @@ const assetResult = runSurgeScript({
 assert(assetResult.body, "asset body should be changed");
 assert(assetResult.body.includes('table:"center_peek"'));
 assert(assetResult.body.includes('chat:"center_peek"'));
+
+const requestPatternMatch = moduleSource.match(/notion-center-peek-request = .*pattern=([^,]+)/);
+assert(requestPatternMatch, "request script pattern should exist in module");
+const requestPattern = new RegExp(requestPatternMatch[1]);
+assert(requestPattern.test("https://www.notion.so/api/v3/saveTransactions"));
+assert(requestPattern.test("https://www.notion.so/example?p=abc&pm=s"));
+assert(!requestPattern.test("https://www.notion.so/api/v3/getActiveThreadsForBlocks"));
 
 console.log("Notion center-peek rewrite tests passed.");

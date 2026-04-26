@@ -15,7 +15,7 @@
     try {
       const parsed = new URL(url);
       const pm = parsed.searchParams.get("pm");
-      if (pm !== "s" && pm !== "side_peek" && pm !== "full_page") {
+      if (pm !== "s" && pm !== "f" && pm !== "side_peek" && pm !== "full_page") {
         return { changed: false, value: url };
       }
       parsed.searchParams.set("pm", "c");
@@ -109,10 +109,6 @@
 
     if (key === "collection_view") {
       changed = patchCollectionViewMap(value) || changed;
-    }
-
-    if (key === "value" && patchCollectionViewValue(value)) {
-      changed = true;
     }
 
     if (key === "collection_peek_mode") {
