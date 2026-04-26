@@ -162,7 +162,7 @@ const fullPageUrlResult = runSurgeScript({
 assert.equal(fullPageUrlResult.url, "https://www.notion.so/example?p=abc&pm=c");
 
 const assetBody =
-  'x;let i={table:"side_peek",board:"side_peek",calendar:"center_peek",list:"side_peek",gallery:"center_peek",timeline:"side_peek",page:"side_peek",chat:"side_peek"};const q="?pm=s";open({peekMode:u,openInNew:l});const params={pm:"s"};y';
+  'x;let i={table:"side_peek",board:"side_peek",calendar:"center_peek",list:"side_peek",gallery:"center_peek",timeline:"side_peek",page:"side_peek",chat:"side_peek"};const q="?pm=s";function Row({peekMode:u,openInNew:l}){return u}open({environment:t,store:i,peekMode:u,openInNew:l});const params={pm:"s"};y';
 const assetResult = runSurgeScript({
   request: { url: "https://www.notion.so/_assets/example.js", method: "GET" },
   response: { status: 200, headers: {}, body: assetBody },
@@ -171,7 +171,8 @@ assert(assetResult.body, "asset body should be changed");
 assert(assetResult.body.includes('table:"center_peek"'));
 assert(assetResult.body.includes('chat:"center_peek"'));
 assert(assetResult.body.includes('"?pm=c"'));
-assert(assetResult.body.includes('peekMode:"center_peek",openInNew'));
+assert(assetResult.body.includes('function Row({peekMode:u,openInNew:l})'));
+assert(assetResult.body.includes('open({environment:t,store:i,peekMode:"center_peek",openInNew'));
 assert(assetResult.body.includes('pm:"c"'));
 
 const requestPatternMatch = moduleSource.match(/notion-center-peek-request = .*pattern=([^,]+)/);

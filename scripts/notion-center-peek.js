@@ -154,7 +154,10 @@
     );
 
     next = next
-      .replace(/peekMode:[$A-Z_a-z][$\w]*,openInNew/g, 'peekMode:"center_peek",openInNew')
+      .replace(
+        /((?:\)|[$A-Z_a-z][$\w]*)\s*\(\s*\{environment:[^{};]{0,500}?store:[^{};]{0,500}?peekMode:)[$A-Z_a-z][$\w]*(,openInNew)/g,
+        '$1"center_peek"$2',
+      )
       .replace(/([?&]pm=)s\b/g, "$1c")
       .replace(/([?&]pm=)side_peek\b/g, "$1c")
       .replace(/pm:\s*["']s["']/g, 'pm:"c"')
