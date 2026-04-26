@@ -1,0 +1,133 @@
+#!/usr/bin/env node
+
+"use strict";
+
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+
+const scriptPath = path.join(__dirname, "..", "scripts", "notion-center-peek.js");
+const source = fs.readFileSync(scriptPath, "utf8");
+
+function runSurgeScript({ request, response }) {
+  let doneValue;
+  const context = {
+    URL,
+    Set,
+    JSON,
+    Object,
+    Array,
+    console,
+    $request: request,
+    $done(value) {
+      doneValue = value || {};
+    },
+  };
+  if (response) {
+    context.$response = response;
+  }
+  vm.createContext(context);
+  vm.runInContext(source, context, { filename: scriptPath });
+  return doneValue;
+}
+
+const loadPageResponse = {
+  recordMap: {
+    collection_view: {
+      a: {
+        role: "editor",
+        value: {
+          id: "a",
+          type: "table",
+          format: { table_wrap: true, collection_peek_mode: "side_peek" },
+        },
+      },
+      b: {
+        role: "reader",
+        value: {
+          id: "b",
+          type: "board",
+          format: { board_columns: [] },
+        },
+      },
+      c: {
+        role: "reader",
+        value: {
+          id: "c",
+          type: "calendar",
+          format: { collection_peek_mode: "center_peek" },
+        },
+      },
+    },
+  },
+};
+
+const responseResult = runSurgeScript({
+  request: { url: "https://www.notion.so/api/v3/loadPageChunk", method: "POST" },
+  response: { status: 200, headers: {}, body: JSON.stringify(loadPageResponse) },
+});
+assert(responseResult.body, "response body should be changed");
+const patchedResponse = JSON.parse(responseResult.body);
+assert.equal(
+  patchedResponse.recordMap.collection_view.a.value.format.collection_peek_mode,
+  "center_peek",
+);
+assert.equal(
+  patchedResponse.recordMap.collection_view.b.value.format.collection_peek_mode,
+  "center_peek",
+);
+assert.equal(
+  patchedResponse.recordMap.collection_view.c.value.format.collection_peek_mode,
+  "center_peek",
+);
+
+const transaction = {
+  requestId: "x",
+  transactions: [
+    {
+      operations: [
+        {
+          pointer: { table: "collection_view", id: "a", spaceId: "s" },
+          path: ["format", "collection_peek_mode"],
+          command: "set",
+          args: "side_peek",
+        },
+      ],
+    },
+  ],
+};
+
+const requestResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/api/v3/saveTransactions",
+    method: "POST",
+    body: JSON.stringify(transaction),
+  },
+});
+assert(requestResult.body, "request body should be changed");
+const patchedRequest = JSON.parse(requestResult.body);
+assert.equal(
+  patchedRequest.transactions[0].operations[0].args,
+  "center_peek",
+);
+
+const urlResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/example?p=abc&pm=s",
+    method: "GET",
+  },
+});
+assert.equal(urlResult.url, "https://www.notion.so/example?p=abc&pm=c");
+
+const assetBody =
+  'x;let i={table:"side_peek",board:"side_peek",calendar:"center_peek",list:"side_peek",gallery:"center_peek",timeline:"side_peek",page:"side_peek",chat:"side_peek"};y';
+const assetResult = runSurgeScript({
+  request: { url: "https://www.notion.so/_assets/example.js", method: "GET" },
+  response: { status: 200, headers: {}, body: assetBody },
+});
+assert(assetResult.body, "asset body should be changed");
+assert(assetResult.body.includes('table:"center_peek"'));
+assert(assetResult.body.includes('chat:"center_peek"'));
+
+console.log("Notion center-peek rewrite tests passed.");
