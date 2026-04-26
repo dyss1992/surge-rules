@@ -154,6 +154,7 @@
     );
 
     next = next
+      .replace(/(from:\s*"relation_property"\s*,\s*peekMode:\s*)"side_peek"/g, '$1"center_peek"')
       .replace(
         /((?:\)|[$A-Z_a-z][$\w]*)\s*\(\s*\{environment:[^{};]{0,500}?store:[^{};]{0,500}?peekMode:)[$A-Z_a-z][$\w]*(,openInNew)/g,
         '$1"center_peek"$2',
