@@ -178,4 +178,14 @@ assert(requestPattern.test("https://www.notion.so/api/v3/saveTransactions"));
 assert(requestPattern.test("https://www.notion.so/example?p=abc&pm=s"));
 assert(!requestPattern.test("https://www.notion.so/api/v3/getActiveThreadsForBlocks"));
 
+const responsePatternMatch = moduleSource.match(/notion-center-peek-response = .*pattern=([^,]+)/);
+assert(responsePatternMatch, "response script pattern should exist in module");
+const responsePattern = new RegExp(responsePatternMatch[1]);
+assert(responsePattern.test("https://www.notion.so/api/v3/loadPageChunk"));
+assert(responsePattern.test("https://www.notion.so/api/v3/loadCachedPageChunkV2"));
+assert(responsePattern.test("https://www.notion.so/api/v3/queryCollection"));
+assert(responsePattern.test("https://www.notion.so/_assets/example.js"));
+assert(!responsePattern.test("https://www.notion.so/api/v3/getInferenceTranscriptsUnreadCount"));
+assert(!responsePattern.test("https://www.notion.so/api/v3/etClient"));
+
 console.log("Notion center-peek rewrite tests passed.");
