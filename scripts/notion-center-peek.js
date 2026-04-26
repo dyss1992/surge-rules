@@ -3,12 +3,7 @@
 
 (function () {
   const CENTER = "center_peek";
-  const BLOCKED = new Set(["side_peek", "full_page", "s", "f"]);
   const BODY_TYPES = new Set(["string", "object"]);
-
-  function normalizePeekValue(value) {
-    return BLOCKED.has(value) ? CENTER : value;
-  }
 
   function normalizeUrl(url) {
     if (typeof url !== "string") return { changed: false, value: url };
@@ -111,15 +106,6 @@
       changed = patchCollectionViewMap(value) || changed;
     }
 
-    if (key === "collection_peek_mode") {
-      const next = normalizePeekValue(value);
-      if (next !== value && parent && typeof parent === "object") {
-        parent[key] = next;
-        changed = true;
-      }
-      return changed;
-    }
-
     changed = patchOperation(value) || changed;
     changed = patchRecordMapCollectionViews(value) || changed;
 
@@ -129,14 +115,6 @@
       }
     } else {
       for (const childKey of Object.keys(value)) {
-        if (childKey === "collection_peek_mode") {
-          const next = normalizePeekValue(value[childKey]);
-          if (next !== value[childKey]) {
-            value[childKey] = next;
-            changed = true;
-          }
-          continue;
-        }
         changed = walk(value[childKey], childKey, value) || changed;
       }
     }
@@ -160,8 +138,13 @@
     }
   }
 
-  function patchTextBody(body) {
+  function isAssetUrl(url) {
+    return typeof url === "string" && /\/_assets\//.test(url);
+  }
+
+  function patchTextBody(body, url) {
     if (typeof body !== "string") return { changed: false, body };
+    if (!isAssetUrl(url)) return { changed: false, body };
     let next = body
       .replace(/"collection_peek_mode"\s*:\s*"side_peek"/g, '"collection_peek_mode":"center_peek"')
       .replace(/"collection_peek_mode"\s*:\s*"full_page"/g, '"collection_peek_mode":"center_peek"');
@@ -197,7 +180,11 @@
   const bodyInfo = getBody();
   if (bodyInfo.kind !== "none") {
     const jsonResult = patchJsonBody(bodyInfo.body);
-    const bodyResult = jsonResult.changed ? jsonResult : patchTextBody(bodyInfo.body);
+    const requestUrl =
+      typeof $request !== "undefined" && $request ? $request.url : undefined;
+    const bodyResult = jsonResult.changed
+      ? jsonResult
+      : patchTextBody(bodyInfo.body, requestUrl);
     if (bodyResult.changed) {
       result.body = bodyResult.body;
       changed = true;

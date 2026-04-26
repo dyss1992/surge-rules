@@ -92,7 +92,7 @@ const unrelatedRecordMapResponse = {
         value: {
           id: "x",
           type: "text",
-          format: { block_color: "default" },
+          format: { block_color: "default", collection_peek_mode: "side_peek" },
         },
       },
     },
@@ -104,6 +104,16 @@ const unrelatedResult = runSurgeScript({
   response: { status: 200, headers: {}, body: JSON.stringify(unrelatedRecordMapResponse) },
 });
 assert.deepEqual(unrelatedResult, {}, "unrelated record values should not be patched");
+
+const telemetryResult = runSurgeScript({
+  request: { url: "https://www.notion.so/api/v3/etClient", method: "POST" },
+  response: {
+    status: 200,
+    headers: {},
+    body: JSON.stringify({ collection_peek_mode: "side_peek" }),
+  },
+});
+assert.deepEqual(telemetryResult, {}, "ordinary API responses should not be text patched");
 
 const transaction = {
   requestId: "x",
