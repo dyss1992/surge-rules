@@ -12,7 +12,7 @@ const source = fs.readFileSync(scriptPath, "utf8");
 const modulePath = path.join(__dirname, "..", "modules", "notion-center-peek.sgmodule");
 const moduleSource = fs.readFileSync(modulePath, "utf8");
 
-function runSurgeScript({ request, response }) {
+function runSurgeScript({ request, response, argument }) {
   let doneValue;
   const context = {
     URL,
@@ -22,6 +22,7 @@ function runSurgeScript({ request, response }) {
     Array,
     console,
     $request: request,
+    $argument: argument,
     $done(value) {
       doneValue = value || {};
     },
@@ -153,6 +154,14 @@ const urlResult = runSurgeScript({
 });
 assert.equal(urlResult.url, "https://www.notion.so/example?p=abc&pm=c");
 
+const centerUrlResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/example?p=abc&pm=center_peek",
+    method: "GET",
+  },
+});
+assert.equal(centerUrlResult.url, "https://www.notion.so/example?p=abc&pm=c");
+
 const fullPageUrlResult = runSurgeScript({
   request: {
     url: "https://www.notion.so/example?p=abc&pm=f",
@@ -176,14 +185,72 @@ assert(assetResult.body.includes('open({environment:t,store:i,peekMode:"center_p
 assert(assetResult.body.includes('openParent({from:"relation_property",peekMode:"center_peek"})'));
 assert(assetResult.body.includes('pm:"c"'));
 
-const requestPatternMatch = moduleSource.match(/notion-center-peek-request = .*pattern=([^,]+)/);
+const customArgument =
+  "target_mode=side_peek&collection_view_mode=full_page&relation_property_mode=side_peek&client_open_mode=full_page&url_pm=f";
+const customResponseResult = runSurgeScript({
+  request: { url: "https://www.notion.so/api/v3/loadPageChunk", method: "POST" },
+  response: { status: 200, headers: {}, body: JSON.stringify(loadPageResponse) },
+  argument: customArgument,
+});
+assert(customResponseResult.body, "custom response body should be changed");
+const customPatchedResponse = JSON.parse(customResponseResult.body);
+assert.equal(
+  customPatchedResponse.recordMap.collection_view.a.value.format.collection_peek_mode,
+  "full_page",
+);
+assert.equal(
+  customPatchedResponse.recordMap.collection_view.b.value.format.collection_peek_mode,
+  "full_page",
+);
+
+const customRequestResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/api/v3/saveTransactions",
+    method: "POST",
+    body: JSON.stringify(transaction),
+  },
+  argument: customArgument,
+});
+assert(customRequestResult.body, "custom request body should be changed");
+assert.equal(
+  JSON.parse(customRequestResult.body).transactions[0].operations[0].args,
+  "full_page",
+);
+
+const customUrlResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/example?p=abc&pm=c",
+    method: "GET",
+  },
+  argument: customArgument,
+});
+assert.equal(customUrlResult.url, "https://www.notion.so/example?p=abc&pm=f");
+
+const customAssetResult = runSurgeScript({
+  request: { url: "https://www.notion.so/_assets/example.js", method: "GET" },
+  response: { status: 200, headers: {}, body: assetBody },
+  argument: customArgument,
+});
+assert(customAssetResult.body, "custom asset body should be changed");
+assert(customAssetResult.body.includes('table:"full_page"'));
+assert(customAssetResult.body.includes('chat:"full_page"'));
+assert(customAssetResult.body.includes('"?pm=f"'));
+assert(customAssetResult.body.includes('function Row({peekMode:u,openInNew:l})'));
+assert(customAssetResult.body.includes('open({environment:t,store:i,peekMode:"full_page",openInNew'));
+assert(customAssetResult.body.includes('openParent({from:"relation_property",peekMode:"side_peek"})'));
+assert(customAssetResult.body.includes('pm:"f"'));
+
+assert(moduleSource.includes("#!arguments=target_mode:center_peek"));
+assert(moduleSource.includes("argument=\"target_mode={{{target_mode}}}"));
+
+const requestPatternMatch = moduleSource.match(/notion-peek-mode-request = .*pattern=([^,]+)/);
 assert(requestPatternMatch, "request script pattern should exist in module");
 const requestPattern = new RegExp(requestPatternMatch[1]);
 assert(requestPattern.test("https://www.notion.so/api/v3/saveTransactions"));
 assert(requestPattern.test("https://www.notion.so/example?p=abc&pm=s"));
 assert(!requestPattern.test("https://www.notion.so/api/v3/getActiveThreadsForBlocks"));
 
-const responsePatternMatch = moduleSource.match(/notion-center-peek-response = .*pattern=([^,]+)/);
+const responsePatternMatch = moduleSource.match(/notion-peek-mode-response = .*pattern=([^,]+)/);
 assert(responsePatternMatch, "response script pattern should exist in module");
 const responsePattern = new RegExp(responsePatternMatch[1]);
 assert(responsePattern.test("https://www.notion.so/api/v3/loadPageChunk"));
@@ -193,4 +260,4 @@ assert(responsePattern.test("https://www.notion.so/_assets/example.js"));
 assert(!responsePattern.test("https://www.notion.so/api/v3/getInferenceTranscriptsUnreadCount"));
 assert(!responsePattern.test("https://www.notion.so/api/v3/etClient"));
 
-console.log("Notion center-peek rewrite tests passed.");
+console.log("Notion peek-mode rewrite tests passed.");
