@@ -25,6 +25,36 @@ https://raw.githubusercontent.com/dyss1992/surge-rules/main/modules/notion-cente
 
 Then reload Surge and refresh or restart Notion.
 
+### First-Run Checklist
+
+For a new user, use this order:
+
+1. Quit Notion completely.
+2. Import and enable the Surge module.
+3. Make sure Surge has MITM, Rewrite, and Scripting enabled.
+4. Make sure the device trusts the Surge CA certificate.
+5. Reload Surge and update the module script resource.
+6. Open Notion and load a Notion page from the network.
+7. Open a database row or Relation page and check the URL:
+   - `pm=c` means center peek
+   - `pm=s` means side peek
+   - `pm=f` means full page
+
+If it still opens with the old mode, the most common cause is cached Notion frontend files. Quit Notion, clear only Notion's frontend cache / Service Worker cache, then reopen Notion while Surge is already enabled. Do not clear cookies, local storage, IndexedDB, or account data unless you intentionally want to sign in again.
+
+On macOS, the relevant cache folders are usually under:
+
+```text
+~/Library/Application Support/Notion/Cache
+~/Library/Application Support/Notion/Code Cache
+~/Library/Application Support/Notion/notionAssetCache-v2
+~/Library/Application Support/Notion/Partitions/notion/Cache
+~/Library/Application Support/Notion/Partitions/notion/Code Cache
+~/Library/Application Support/Notion/Partitions/notion/Service Worker
+```
+
+After clearing those folders, restart Notion and test again. The first reload may be slower because Notion needs to download its frontend files again.
+
 ### Editable Parameters
 
 Surge shows these values in the module's edit-parameter panel:
