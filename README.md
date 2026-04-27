@@ -11,7 +11,7 @@ It works by rewriting Notion HTTPS traffic after Surge MITM decryption:
 - page and database response data containing `collection_view` records is normalized to the configured database view mode
 - request data that tries to save another `collection_peek_mode` for a collection view is normalized back to the configured database view mode
 - Notion peek URLs using `pm` are changed to the configured URL mode
-- Notion frontend asset defaults for database, relation, and matched open calls are patched toward the configured modes when they are present in matched assets
+- Notion frontend asset defaults for database, relation, no-view fallback, and matched open calls are patched toward the configured modes when they are present in matched assets
 
 The request-side rule is intentionally limited to Notion's save endpoint and peek URLs. The response-side rule is limited to page/database loading endpoints and frontend assets so unrelated Notion API calls are not marked as modified in Surge.
 
@@ -34,6 +34,7 @@ Surge shows these values in the module's edit-parameter panel:
 | `target_mode` | `center_peek` | Default mode used by the other parameters. Valid values: `center_peek`, `side_peek`, `full_page`. |
 | `collection_view_mode` | `target` | Database view setting. Use `target` to follow `target_mode`. |
 | `relation_property_mode` | `target` | Pages opened from Relation properties. Use `target` to follow `target_mode`. |
+| `fallback_peek_mode` | `target` | Notion fallback when no database view mode is available. Use `target` to follow `target_mode`. |
 | `client_open_mode` | `target` | Other matched Notion frontend open calls. Use `target` to follow `target_mode`. |
 | `url_pm` | `auto` | URL `pm` value. Use `auto` to follow `target_mode`, or set `c`, `s`, `f`. |
 

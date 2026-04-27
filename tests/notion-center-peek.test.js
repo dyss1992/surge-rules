@@ -171,7 +171,7 @@ const fullPageUrlResult = runSurgeScript({
 assert.equal(fullPageUrlResult.url, "https://www.notion.so/example?p=abc&pm=c");
 
 const assetBody =
-  'x;let i={table:"side_peek",board:"side_peek",calendar:"center_peek",list:"side_peek",gallery:"center_peek",timeline:"side_peek",page:"side_peek",chat:"side_peek"};const q="?pm=s";function Row({peekMode:u,openInNew:l}){return u}open({environment:t,store:i,peekMode:u,openInNew:l});openParent({from:"relation_property",peekMode:"side_peek"});const params={pm:"s"};y';
+  'x;let i={table:"side_peek",board:"side_peek",calendar:"center_peek",list:"side_peek",gallery:"center_peek",timeline:"side_peek",page:"side_peek",chat:"side_peek"};const q="?pm=s";function Row({peekMode:u,openInNew:l}){return u}let fallback=(null==e?void 0:e.normalizedFormatStore.state.collection_peek_mode)??(o?r(476670).C9[o]:"side_peek");open({environment:t,store:i,peekMode:u,openInNew:l});openParent({from:"relation_property",peekMode:"side_peek"});const params={pm:"s"};y';
 const assetResult = runSurgeScript({
   request: { url: "https://www.notion.so/_assets/example.js", method: "GET" },
   response: { status: 200, headers: {}, body: assetBody },
@@ -179,6 +179,7 @@ const assetResult = runSurgeScript({
 assert(assetResult.body, "asset body should be changed");
 assert(assetResult.body.includes('table:"center_peek"'));
 assert(assetResult.body.includes('chat:"center_peek"'));
+assert(assetResult.body.includes('??(o?r(476670).C9[o]:"center_peek")'));
 assert(assetResult.body.includes('"?pm=c"'));
 assert(assetResult.body.includes('function Row({peekMode:u,openInNew:l})'));
 assert(assetResult.body.includes('open({environment:t,store:i,peekMode:"center_peek",openInNew'));
@@ -186,7 +187,7 @@ assert(assetResult.body.includes('openParent({from:"relation_property",peekMode:
 assert(assetResult.body.includes('pm:"c"'));
 
 const customArgument =
-  "target_mode=side_peek&collection_view_mode=full_page&relation_property_mode=side_peek&client_open_mode=full_page&url_pm=f";
+  "target_mode=side_peek&collection_view_mode=full_page&relation_property_mode=side_peek&fallback_peek_mode=center_peek&client_open_mode=full_page&url_pm=f";
 const customResponseResult = runSurgeScript({
   request: { url: "https://www.notion.so/api/v3/loadPageChunk", method: "POST" },
   response: { status: 200, headers: {}, body: JSON.stringify(loadPageResponse) },
@@ -234,6 +235,7 @@ const customAssetResult = runSurgeScript({
 assert(customAssetResult.body, "custom asset body should be changed");
 assert(customAssetResult.body.includes('table:"full_page"'));
 assert(customAssetResult.body.includes('chat:"full_page"'));
+assert(customAssetResult.body.includes('??(o?r(476670).C9[o]:"center_peek")'));
 assert(customAssetResult.body.includes('"?pm=f"'));
 assert(customAssetResult.body.includes('function Row({peekMode:u,openInNew:l})'));
 assert(customAssetResult.body.includes('open({environment:t,store:i,peekMode:"full_page",openInNew'));
@@ -241,7 +243,9 @@ assert(customAssetResult.body.includes('openParent({from:"relation_property",pee
 assert(customAssetResult.body.includes('pm:"f"'));
 
 assert(moduleSource.includes("#!arguments=target_mode:center_peek"));
+assert(moduleSource.includes("fallback_peek_mode:target"));
 assert(moduleSource.includes("argument=\"target_mode={{{target_mode}}}"));
+assert(moduleSource.includes("fallback_peek_mode={{{fallback_peek_mode}}}"));
 
 const requestPatternMatch = moduleSource.match(/notion-peek-mode-request = .*pattern=([^,]+)/);
 assert(requestPatternMatch, "request script pattern should exist in module");

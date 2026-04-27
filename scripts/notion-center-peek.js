@@ -67,6 +67,7 @@
   const TARGET_MODE = normalizePeekMode(args.target_mode, DEFAULT_MODE);
   const COLLECTION_VIEW_MODE = resolveMode(args, "collection_view_mode", TARGET_MODE);
   const RELATION_PROPERTY_MODE = resolveMode(args, "relation_property_mode", TARGET_MODE);
+  const FALLBACK_PEEK_MODE = resolveMode(args, "fallback_peek_mode", TARGET_MODE);
   const CLIENT_OPEN_MODE = resolveMode(args, "client_open_mode", TARGET_MODE);
   const URL_PM = resolvePm(args, "url_pm", TARGET_MODE);
 
@@ -225,6 +226,10 @@
     );
 
     next = next
+      .replace(
+        new RegExp(`(\\?\\?\\([^;{}]{0,180}:"${MODE_PATTERN}"\\))`, "g"),
+        match => match.replace(new RegExp(`:"${MODE_PATTERN}"`), `:"${FALLBACK_PEEK_MODE}"`),
+      )
       .replace(
         new RegExp(`(from:\\s*"relation_property"\\s*,\\s*peekMode:\\s*)"${MODE_PATTERN}"`, "g"),
         `$1"${RELATION_PROPERTY_MODE}"`,
