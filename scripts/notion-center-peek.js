@@ -16,6 +16,14 @@
   const MODE_PATTERN = "(?:center_peek|side_peek|full_page)";
   const PM_PATTERN = "(?:c|s|f|center_peek|side_peek|full_page)";
   const BODY_TYPES = new Set(["string", "object"]);
+  const JSON_BODY_LIMIT = 3 * 1024 * 1024;
+  const ASSET_BODY_LIMIT = 4 * 1024 * 1024;
+  const API_RESPONSE_PATTERN =
+    /\/api\/v3\/(?:loadPageChunk|loadCachedPageChunkV2|queryCollection|syncRecordValues|syncRecordValuesSpaceInitial|getCollectionData|getRecordValues|getPublicPageData)(?:$|[/?#])/;
+  const SAVE_TRANSACTIONS_PATTERN = /\/api\/v3\/saveTransactions(?:$|[/?#])/;
+  const ASSET_WHITELIST_PATTERN = /\/_assets\/(?:61315|71688|67535)-[A-Za-z0-9]+\.js(?:$|[?#])/;
+  const TEXT_SIGNAL_PATTERN =
+    /collection_peek_mode|side_peek|full_page|relation_property|[?&]pm=|pm:\s*["']/;
 
   function decodeArg(value) {
     try {
@@ -87,6 +95,60 @@
     } catch {
       return { changed: false, value: url };
     }
+  }
+
+  function getHeader(headers, name) {
+    if (!headers || typeof headers !== "object") return "";
+    const target = name.toLowerCase();
+    for (const key of Object.keys(headers)) {
+      if (key.toLowerCase() === target) {
+        const value = headers[key];
+        return value == null ? "" : String(value);
+      }
+    }
+    return "";
+  }
+
+  function isCandidateJsonUrl(url) {
+    return (
+      typeof url === "string" &&
+      (API_RESPONSE_PATTERN.test(url) || SAVE_TRANSACTIONS_PATTERN.test(url))
+    );
+  }
+
+  function isWhitelistedAssetUrl(url) {
+    return typeof url === "string" && ASSET_WHITELIST_PATTERN.test(url);
+  }
+
+  function shouldPatchJsonBody(body, url, headers) {
+    if (typeof body !== "string") return false;
+    if (!isCandidateJsonUrl(url)) return false;
+    if (body.length > JSON_BODY_LIMIT) return false;
+
+    const trimmed = body.trim();
+    if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) return false;
+
+    const contentType = getHeader(headers, "content-type").toLowerCase();
+    return !contentType || contentType.includes("json") || contentType.includes("text/plain");
+  }
+
+  function shouldPatchTextBody(body, url, headers) {
+    if (typeof body !== "string") return false;
+    if (!isWhitelistedAssetUrl(url)) return false;
+    if (body.length > ASSET_BODY_LIMIT) return false;
+
+    const contentType = getHeader(headers, "content-type").toLowerCase();
+    if (
+      contentType &&
+      !contentType.includes("javascript") &&
+      !contentType.includes("ecmascript") &&
+      !contentType.includes("text/plain") &&
+      !contentType.includes("application/octet-stream")
+    ) {
+      return false;
+    }
+
+    return TEXT_SIGNAL_PATTERN.test(body);
   }
 
   function looksLikeCollectionViewValue(value) {
@@ -191,13 +253,8 @@
     return changed;
   }
 
-  function patchJsonBody(body) {
-    if (typeof body !== "string") return { changed: false, body };
-    const trimmed = body.trim();
-    if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) {
-      return { changed: false, body };
-    }
-
+  function patchJsonBody(body, url, headers) {
+    if (!shouldPatchJsonBody(body, url, headers)) return { changed: false, body };
     try {
       const parsed = JSON.parse(body);
       const changed = walk(parsed, "", null);
@@ -207,13 +264,8 @@
     }
   }
 
-  function isAssetUrl(url) {
-    return typeof url === "string" && /\/_assets\//.test(url);
-  }
-
-  function patchTextBody(body, url) {
-    if (typeof body !== "string") return { changed: false, body };
-    if (!isAssetUrl(url)) return { changed: false, body };
+  function patchTextBody(body, url, headers) {
+    if (!shouldPatchTextBody(body, url, headers)) return { changed: false, body };
     const modeRegex = new RegExp(`"collection_peek_mode"\\s*:\\s*"${MODE_PATTERN}"`, "g");
     let next = body.replace(
       modeRegex,
@@ -254,6 +306,16 @@
     return { kind: "none", body: undefined };
   }
 
+  function getMessageHeaders(kind) {
+    if (kind === "response" && typeof $response !== "undefined" && $response) {
+      return $response.headers || {};
+    }
+    if (kind === "request" && typeof $request !== "undefined" && $request) {
+      return $request.headers || {};
+    }
+    return {};
+  }
+
   const result = {};
   let changed = false;
 
@@ -267,12 +329,13 @@
 
   const bodyInfo = getBody();
   if (bodyInfo.kind !== "none") {
-    const jsonResult = patchJsonBody(bodyInfo.body);
     const requestUrl =
       typeof $request !== "undefined" && $request ? $request.url : undefined;
+    const headers = getMessageHeaders(bodyInfo.kind);
+    const jsonResult = patchJsonBody(bodyInfo.body, requestUrl, headers);
     const bodyResult = jsonResult.changed
       ? jsonResult
-      : patchTextBody(bodyInfo.body, requestUrl);
+      : patchTextBody(bodyInfo.body, requestUrl, headers);
     if (bodyResult.changed) {
       result.body = bodyResult.body;
       changed = true;

@@ -11,9 +11,25 @@ It works by rewriting Notion HTTPS traffic after Surge MITM decryption:
 - page and database response data containing `collection_view` records is normalized to the configured database view mode
 - request data that tries to save another `collection_peek_mode` for a collection view is normalized back to the configured database view mode
 - Notion peek URLs using `pm` are changed to the configured URL mode
-- Notion frontend asset defaults for database, relation, no-view fallback, and matched open calls are patched toward the configured modes when they are present in matched assets
+- Notion frontend defaults for database, relation, no-view fallback, and matched open calls are patched toward the configured modes when they are present in the small asset whitelist
 
-The request-side rule is intentionally limited to Notion's save endpoint and peek URLs. The response-side rule is limited to page/database loading endpoints and frontend assets so unrelated Notion API calls are not marked as modified in Surge.
+The request-side rules are intentionally split between Notion's save endpoint and peek URLs. The response-side rules are limited to page/database loading endpoints plus a small whitelist of known frontend chunks (`61315-*`, `71688-*`, and `67535-*`). This avoids sending every Notion `_assets/` JS/CSS/image/font response through the script and keeps Surge Recent Requests much smaller.
+
+### Request Scope
+
+Processed:
+
+- `api/v3/loadPageChunk`, `loadCachedPageChunkV2`, `queryCollection`, `syncRecordValues`, `syncRecordValuesSpaceInitial`, `getCollectionData`, `getRecordValues`, and `getPublicPageData`
+- `api/v3/saveTransactions`
+- Notion URLs that already include a `pm` peek parameter
+- whitelisted Notion frontend chunks: `61315-*`, `71688-*`, and `67535-*`
+
+Skipped:
+
+- unrelated Notion API calls, including telemetry and AI/background endpoints
+- generic `_assets/` files such as app bundles, CSS, images, fonts, source maps, and unrelated JS chunks
+- responses whose content type, size, URL, or text content clearly does not need peek-mode rewriting
+- large API responses above 3 MiB and whitelisted frontend asset responses above 4 MiB
 
 ### Install
 
@@ -82,7 +98,7 @@ Common examples:
 
 ### Limits
 
-This is an unofficial workaround. It depends on Notion continuing to send compatible JSON records or compatible frontend asset text. Cached local Notion data may still need a refresh or restart before the change is visible.
+This is an unofficial workaround. It depends on Notion continuing to send compatible JSON records or compatible frontend asset text. Cached local Notion data may still need a refresh or restart before the change is visible. If Notion moves the relevant frontend code into different chunk IDs, the asset whitelist may need to be updated while the API and URL rules can remain narrow.
 
 ### Validation
 
