@@ -10,6 +10,6 @@ notion-peek-save-request = type=http-request,pattern=^https:\/\/(?:[^\/]+\.)*not
 notion-peek-url-request = type=http-request,pattern=^https:\/\/(?:[^\/]+\.)*notion\.(?:so|com)\/.*[?&]pm=,script-path=https://raw.githubusercontent.com/dyss1992/surge-rules/main/scripts/notion-center-peek.js?v=peek-scope-20260501-1,timeout=3,engine=jsc,argument="target_mode={{{target_mode}}}&collection_view_mode={{{collection_view_mode}}}&relation_property_mode={{{relation_property_mode}}}&fallback_peek_mode={{{fallback_peek_mode}}}&client_open_mode={{{client_open_mode}}}&url_pm={{{url_pm}}}"
 
 [MITM]
-hostname = %APPEND% *.notion.so, *.notion.com
+hostname = %APPEND% *.notion.so, *.notion.com, -api.notion.com
 h2 = true
 auto-quic-block = true

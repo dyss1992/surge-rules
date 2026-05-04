@@ -94,7 +94,7 @@ Common examples:
 
 - Surge MITM, Rewrite, and Scripting must be enabled.
 - The device using Notion must trust the Surge CA certificate.
-- The module appends `*.notion.so` and `*.notion.com` to the MITM host list.
+- The module appends `*.notion.so` and `*.notion.com` to the MITM host list, but explicitly excludes `api.notion.com` so official Notion API clients keep the original TLS certificate chain.
 
 ### Limits
 

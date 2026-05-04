@@ -292,5 +292,6 @@ assert(!assetResponsePattern.test("https://www.notion.so/_assets/example.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/RecordStore-746d5743213d863e.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/notion.css"));
+assert(moduleSource.includes("-api.notion.com"), "Notion API should be excluded from MITM");
 
 console.log("Notion peek-mode rewrite tests passed.");
