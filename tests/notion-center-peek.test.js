@@ -292,6 +292,12 @@ assert(!assetResponsePattern.test("https://www.notion.so/_assets/example.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/RecordStore-746d5743213d863e.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/notion.css"));
-assert(moduleSource.includes("-api.notion.com"), "Notion API should be excluded from MITM");
+const mitmHostnameMatch = moduleSource.match(/^hostname\s*=\s*(.*)$/m);
+assert(mitmHostnameMatch, "MITM hostname line should exist");
+assert(
+  mitmHostnameMatch[1].indexOf("-api.notion.com") <
+    mitmHostnameMatch[1].indexOf("*.notion.com"),
+  "Notion API MITM exclusion should come before the Notion wildcard",
+);
 
 console.log("Notion peek-mode rewrite tests passed.");
