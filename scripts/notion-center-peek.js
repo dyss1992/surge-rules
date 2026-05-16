@@ -21,9 +21,12 @@
   const API_RESPONSE_PATTERN =
     /\/api\/v3\/(?:loadPageChunk|loadCachedPageChunkV2|queryCollection|syncRecordValues|syncRecordValuesSpaceInitial|getCollectionData|getRecordValues|getPublicPageData)(?:$|[/?#])/;
   const SAVE_TRANSACTIONS_PATTERN = /\/api\/v3\/saveTransactions(?:$|[/?#])/;
-  const ASSET_WHITELIST_PATTERN = /\/_assets\/(?:61315|71688|67535)-[A-Za-z0-9]+\.js(?:$|[?#])/;
+  const ASSET_WHITELIST_PATTERN =
+    /\/_assets\/(?:(?:61315|71688|67535)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
+  const RELATION_ASSET_PATTERN =
+    /\/_assets\/[A-Za-z0-9]*Relation[A-Za-z0-9]*-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const TEXT_SIGNAL_PATTERN =
-    /collection_peek_mode|side_peek|full_page|relation_property|[?&]pm=|pm:\s*["']/;
+    /collection_peek_mode|side_peek|center_peek|full_page|relation_property|peekViewBlockId|peekMode:|[?&]pm=|pm:\s*["']/;
 
   function decodeArg(value) {
     try {
@@ -118,6 +121,10 @@
 
   function isWhitelistedAssetUrl(url) {
     return typeof url === "string" && ASSET_WHITELIST_PATTERN.test(url);
+  }
+
+  function isRelationAssetUrl(url) {
+    return typeof url === "string" && RELATION_ASSET_PATTERN.test(url);
   }
 
   function shouldPatchJsonBody(body, url, headers) {
@@ -264,8 +271,154 @@
     }
   }
 
+  function applyTextReplacements(text, replacements) {
+    if (!replacements.length) return text;
+    replacements.sort((a, b) => b.start - a.start);
+    let next = text;
+    for (const replacement of replacements) {
+      next =
+        next.slice(0, replacement.start) +
+        replacement.value +
+        next.slice(replacement.end);
+    }
+    return next;
+  }
+
+  function findBalancedEnd(text, startIndex, maxDistance) {
+    let depth = 0;
+    let quote = "";
+    let escaped = false;
+    const endIndex = Math.min(text.length, startIndex + maxDistance);
+
+    for (let index = startIndex; index < endIndex; index += 1) {
+      const char = text[index];
+
+      if (quote) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === quote) {
+          quote = "";
+        }
+        continue;
+      }
+
+      if (char === "\"" || char === "'" || char === "`") {
+        quote = char;
+      } else if (char === "{") {
+        depth += 1;
+      } else if (char === "}") {
+        depth -= 1;
+        if (depth === 0) return index;
+      }
+    }
+
+    return -1;
+  }
+
+  function findExpressionEnd(text, startIndex, objectEnd) {
+    let parenDepth = 0;
+    let bracketDepth = 0;
+    let braceDepth = 0;
+    let quote = "";
+    let escaped = false;
+
+    for (let index = startIndex; index <= objectEnd; index += 1) {
+      const char = text[index];
+
+      if (quote) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === quote) {
+          quote = "";
+        }
+        continue;
+      }
+
+      if (char === "\"" || char === "'" || char === "`") {
+        quote = char;
+      } else if (char === "(") {
+        parenDepth += 1;
+      } else if (char === ")") {
+        parenDepth = Math.max(0, parenDepth - 1);
+      } else if (char === "[") {
+        bracketDepth += 1;
+      } else if (char === "]") {
+        bracketDepth = Math.max(0, bracketDepth - 1);
+      } else if (char === "{") {
+        braceDepth += 1;
+      } else if (char === "}") {
+        if (parenDepth === 0 && bracketDepth === 0 && braceDepth === 0) return index;
+        braceDepth = Math.max(0, braceDepth - 1);
+      } else if (
+        char === "," &&
+        parenDepth === 0 &&
+        bracketDepth === 0 &&
+        braceDepth === 0
+      ) {
+        return index;
+      }
+    }
+
+    return -1;
+  }
+
+  function patchPeekModeInObjects(text, options) {
+    const replacements = [];
+    let searchIndex = 0;
+
+    while ((searchIndex = text.indexOf(options.startToken, searchIndex)) !== -1) {
+      const objectEnd = findBalancedEnd(text, searchIndex, options.maxDistance || 1800);
+      if (objectEnd === -1) {
+        searchIndex += options.startToken.length;
+        continue;
+      }
+
+      const objectText = text.slice(searchIndex, objectEnd + 1);
+      if (options.requiredTokens.some(token => objectText.indexOf(token) === -1)) {
+        searchIndex = objectEnd + 1;
+        continue;
+      }
+
+      const peekIndex = objectText.indexOf("peekMode:");
+      if (peekIndex !== -1) {
+        const valueStart = searchIndex + peekIndex + "peekMode:".length;
+        const valueEnd = findExpressionEnd(text, valueStart, objectEnd);
+        if (valueEnd !== -1) {
+          const replacementValue = `"${options.mode}"`;
+          if (text.slice(valueStart, valueEnd) !== replacementValue) {
+            replacements.push({
+              start: valueStart,
+              end: valueEnd,
+              value: replacementValue,
+            });
+          }
+        }
+      } else if (options.insertAfterToken) {
+        const tokenIndex = objectText.indexOf(options.insertAfterToken);
+        const valueStart = searchIndex + tokenIndex + options.insertAfterToken.length;
+        const valueEnd = findExpressionEnd(text, valueStart, objectEnd);
+        if (valueEnd !== -1) {
+          replacements.push({
+            start: valueEnd,
+            end: valueEnd,
+            value: `,peekMode:"${options.mode}"`,
+          });
+        }
+      }
+
+      searchIndex = objectEnd + 1;
+    }
+
+    return applyTextReplacements(text, replacements);
+  }
+
   function patchTextBody(body, url, headers) {
     if (!shouldPatchTextBody(body, url, headers)) return { changed: false, body };
+    const openCallMode = isRelationAssetUrl(url) ? RELATION_PROPERTY_MODE : CLIENT_OPEN_MODE;
     const modeRegex = new RegExp(`"collection_peek_mode"\\s*:\\s*"${MODE_PATTERN}"`, "g");
     let next = body.replace(
       modeRegex,
@@ -288,10 +441,25 @@
       )
       .replace(
         /((?:\)|[$A-Z_a-z][$\w]*)\s*\(\s*\{environment:[^{};]{0,500}?store:[^{};]{0,500}?peekMode:)[$A-Z_a-z][$\w]*(,openInNew)/g,
-        `$1"${CLIENT_OPEN_MODE}"$2`,
+        `$1"${openCallMode}"$2`,
       )
       .replace(new RegExp(`([?&]pm=)${PM_PATTERN}\\b`, "g"), `$1${URL_PM}`)
       .replace(new RegExp(`pm:\\s*["']${PM_PATTERN}["']`, "g"), `pm:"${URL_PM}"`);
+
+    next = patchPeekModeInObjects(next, {
+      startToken: "{environment:",
+      requiredTokens: ["store:", "peekMode:"],
+      mode: openCallMode,
+    });
+
+    if (isRelationAssetUrl(url)) {
+      next = patchPeekModeInObjects(next, {
+        startToken: "{pageId:",
+        requiredTokens: ["peekViewBlockId:"],
+        insertAfterToken: "peekViewBlockId:",
+        mode: RELATION_PROPERTY_MODE,
+      });
+    }
 
     return { changed: next !== body, body: next };
   }

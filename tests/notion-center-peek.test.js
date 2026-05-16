@@ -254,6 +254,33 @@ assert(customAssetResult.body.includes('open({environment:t,store:i,peekMode:"fu
 assert(customAssetResult.body.includes('openParent({from:"relation_property",peekMode:"side_peek"})'));
 assert(customAssetResult.body.includes('pm:"f"'));
 
+const relationAssetBody =
+  'let z=j&&e?j.getFormatStore().getKeyValue("collection_peek_mode")??n(476670).C9[e]:n(475097).default.state.mode;(0,n(553180).V)({environment:t,store:i,peekMode:u,openInNew:l,resultsStore:r,peekCollectionData:d,pageVisitSource:n(254656).y8.PeekOpen});let d=(0,n(234310).A)({pageId:c.id,pageModel:e,baseUrl:t,peekViewBlockId:u.id,pageVisitSource:n(254656).y8.MentionInPage});let q=(0,n(234310).A)({pageId:c.id,pageModel:e,baseUrl:t,peekViewBlockId:u.id,peekMode:(0,n(328823).f)("full_page"===l?void 0:l??n(475097).default.state.mode),pageVisitSource:n(254656).y8.MentionInPage})';
+const relationAssetResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/_assets/RelationMenuRow-deb278cf92066cae.js",
+    method: "GET",
+  },
+  response: {
+    status: 200,
+    headers: { "content-type": "application/javascript" },
+    body: relationAssetBody,
+  },
+  argument: customArgument,
+});
+assert(relationAssetResult.body, "relation semantic asset should be changed");
+assert(relationAssetResult.body.includes('peekMode:"side_peek",openInNew:l'));
+assert(
+  relationAssetResult.body.includes(
+    'peekViewBlockId:u.id,peekMode:"side_peek",pageVisitSource',
+  ),
+);
+assert(
+  relationAssetResult.body.includes(
+    'peekViewBlockId:u.id,peekMode:"side_peek",pageVisitSource:n(254656).y8.MentionInPage',
+  ),
+);
+
 assert(moduleSource.includes("#!arguments=target_mode:center_peek"));
 assert(moduleSource.includes("fallback_peek_mode:target"));
 assert(moduleSource.includes("argument=\"target_mode={{{target_mode}}}"));
@@ -288,9 +315,17 @@ const assetResponsePattern = new RegExp(assetResponsePatternMatch[1]);
 assert(assetResponsePattern.test("https://www.notion.so/_assets/61315-155b15305540931a.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/71688-e34e6503c2f2c1ee.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/67535-696bada3b43698b0.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/RelationPropertyWithEdges-e8ca79f7e53b5a56.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/RelationMenuRow-deb278cf92066cae.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/createRelationViewsModule-7717e10f8cbb230f.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/BlockPropertyRouter-2cff2062b0864e1a.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/peekRenderer-cf552f7a2cb863af.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/CollectionViewBlock-2a85c7e230ae3bdd.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/RecordStore-c0e43bffee395906.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/PagePropertiesRowNameMenu-707f058897e8b67d.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/example.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
-assert(!assetResponsePattern.test("https://www.notion.so/_assets/RecordStore-746d5743213d863e.js"));
+assert(!assetResponsePattern.test("https://www.notion.so/_assets/ClientFramework-a9bca7b48ce7d38f.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/notion.css"));
 const mitmHostnameMatch = moduleSource.match(/^hostname\s*=\s*(.*)$/m);
 assert(mitmHostnameMatch, "MITM hostname line should exist");
