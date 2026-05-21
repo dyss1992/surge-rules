@@ -13,7 +13,7 @@ It works by rewriting Notion HTTPS traffic after Surge MITM decryption:
 - Notion peek URLs using `pm` are changed to the configured URL mode
 - Notion frontend defaults for database, relation, no-view fallback, URL builders, and matched open calls are patched toward the configured modes when they are present in the small asset whitelist
 
-The request-side rules are intentionally split between Notion's save endpoint and peek URLs. The response-side rules are limited to page/database loading endpoints plus a semantic whitelist of frontend chunks whose names relate to Relation pages, peek rendering, database views, and page properties. Legacy chunk IDs (`61315-*`, `71688-*`, and `67535-*`) are still included for older cached Notion builds. This avoids sending every Notion `_assets/` JS/CSS/image/font response through the script and keeps Surge Recent Requests much smaller.
+The request-side rules are intentionally split between Notion's save endpoint and peek URLs. The response-side rules are limited to page/database loading endpoints plus a semantic whitelist of frontend chunks whose names relate to Relation pages, peek rendering, database views, and page properties. Legacy chunk IDs (`61315-*`, `71688-*`, and `67535-*`) are still included for older cached Notion builds, and the confirmed runtime URL-builder chunk `67426-*` is included for current Notion builds. This avoids sending every Notion `_assets/` JS/CSS/image/font response through the script and keeps Surge Recent Requests much smaller.
 
 ### Request Scope
 
@@ -24,6 +24,7 @@ Processed:
 - Notion URLs that already include a `pm` peek parameter
 - whitelisted Notion frontend chunks:
   - legacy cached chunks: `61315-*`, `71688-*`, and `67535-*`
+  - current runtime URL-builder chunk: `67426-*`
   - semantic Relation chunks such as `RelationPropertyWithEdges-*`, `RelationPropertyOverlayWithEdges-*`, `RelationPropertyMenu-*`, `RelationMenuRow-*`, and `createRelationViewsModule-*`
   - selected peek/database/page-property chunks such as `CollectionViewBlock-*`, `BlockPropertyRouter-*`, `peekRenderer-*`, `PagePropertiesRowNameMenu-*`, `RecordStore-*`, `formPropertyRenderer-*`, `RollupPropertyMenu-*`, and `PropertyModulePersonProperty-*`
 

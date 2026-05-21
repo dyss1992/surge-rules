@@ -22,7 +22,7 @@
     /\/api\/v3\/(?:loadPageChunk|loadCachedPageChunkV2|queryCollection|syncRecordValues|syncRecordValuesSpaceInitial|getCollectionData|getRecordValues|getPublicPageData)(?:$|[/?#])/;
   const SAVE_TRANSACTIONS_PATTERN = /\/api\/v3\/saveTransactions(?:Fanout)?(?:$|[/?#])/;
   const ASSET_WHITELIST_PATTERN =
-    /\/_assets\/(?:(?:61315|71688|67535)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
+    /\/_assets\/(?:(?:61315|71688|67535|67426)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
   const RELATION_ASSET_PATTERN =
     /\/_assets\/[A-Za-z0-9]*Relation[A-Za-z0-9]*-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const TEXT_SIGNAL_PATTERN =

@@ -219,6 +219,15 @@ assert(assetResult.body.includes('open({environment:t,store:i,peekMode:"center_p
 assert(assetResult.body.includes('openParent({from:"relation_property",peekMode:"center_peek"})'));
 assert(assetResult.body.includes('pm:"c"'));
 
+const runtimeAssetResult = runSurgeScript({
+  request: { url: "https://www.notion.so/_assets/67426-b75a8a2b8268549d.js", method: "GET" },
+  response: { status: 200, headers: { "content-type": "text/javascript" }, body: assetBody },
+});
+assert(runtimeAssetResult.body, "runtime asset body should be changed");
+assert(runtimeAssetResult.body.includes('table:"center_peek"'));
+assert(runtimeAssetResult.body.includes('??(o?r(476670).C9[o]:"center_peek")'));
+assert(runtimeAssetResult.body.includes('pm:"c"'));
+
 const skippedAssetResult = runSurgeScript({
   request: { url: "https://www.notion.so/_assets/app-f37b78ccba80bafb.js", method: "GET" },
   response: { status: 200, headers: { "content-type": "application/javascript" }, body: assetBody },
@@ -380,6 +389,7 @@ const assetResponsePattern = new RegExp(assetResponsePatternMatch[1]);
 assert(assetResponsePattern.test("https://www.notion.so/_assets/61315-155b15305540931a.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/71688-e34e6503c2f2c1ee.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/67535-696bada3b43698b0.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/67426-b75a8a2b8268549d.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/RelationPropertyWithEdges-e8ca79f7e53b5a56.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/RelationMenuRow-deb278cf92066cae.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/createRelationViewsModule-7717e10f8cbb230f.js"));
