@@ -434,6 +434,19 @@
     return /\bfunction\s*[$A-Z_a-z][$\w]*\s*$/.test(beforeParen);
   }
 
+  function isLikelyDestructuringPattern(text, objectEnd) {
+    let afterIndex = objectEnd + 1;
+    while (afterIndex < text.length && /\s/.test(text[afterIndex])) afterIndex += 1;
+    return text[afterIndex] === "=" && text[afterIndex + 1] !== "=" && text[afterIndex + 1] !== ">";
+  }
+
+  function shouldSkipObjectRewrite(text, objectStart, objectEnd) {
+    return (
+      isLikelyFunctionParameterObject(text, objectStart, objectEnd) ||
+      isLikelyDestructuringPattern(text, objectEnd)
+    );
+  }
+
   function patchPeekModeInObjects(text, options) {
     const replacements = [];
     let searchIndex = 0;
@@ -457,7 +470,7 @@
         searchIndex = objectEnd + 1;
         continue;
       }
-      if (isLikelyFunctionParameterObject(text, searchIndex, objectEnd)) {
+      if (shouldSkipObjectRewrite(text, searchIndex, objectEnd)) {
         searchIndex = objectEnd + 1;
         continue;
       }
@@ -522,7 +535,14 @@
       )
       .replace(
         /((?:\)|[$A-Z_a-z][$\w]*)\s*\(\s*\{environment:[^{};]{0,500}?store:[^{};]{0,500}?peekMode:)[$A-Z_a-z][$\w]*(,openInNew)/g,
-        `$1"${openCallMode}"$2`,
+        (match, prefix, openInNewToken, offset, fullText) => {
+          const objectStart = offset + match.indexOf("{");
+          const objectEnd = findBalancedEnd(fullText, objectStart, 1200);
+          if (objectEnd !== -1 && shouldSkipObjectRewrite(fullText, objectStart, objectEnd)) {
+            return match;
+          }
+          return `${prefix}"${openCallMode}"${openInNewToken}`;
+        },
       )
       .replace(new RegExp(`([?&]pm=)${PM_PATTERN}\\b`, "g"), `$1${URL_PM}`)
       .replace(new RegExp(`pm:\\s*["']${PM_PATTERN}["']`, "g"), `pm:"${URL_PM}"`);

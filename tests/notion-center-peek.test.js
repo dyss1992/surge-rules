@@ -229,7 +229,7 @@ assert(runtimeAssetResult.body.includes('??(o?r(476670).C9[o]:"center_peek")'));
 assert(runtimeAssetResult.body.includes('pm:"c"'));
 
 const functionParameterAsset =
-  'function n({environment:e,store:t,pageVisitSource:r,visitType:l,openInNew:s,peekMode:d,redirect:c}){return d}open({environment:e,store:t,peekMode:d,openInNew:s});';
+  'function n({environment:e,store:t,pageVisitSource:r,visitType:l,openInNew:s,peekMode:d,redirect:c}){return d}function q({environment:e,store:t,peekMode:d,openInNew:s}){return d}open({environment:e,store:t,peekMode:d,openInNew:s});';
 const functionParameterResult = runSurgeScript({
   request: { url: "https://www.notion.so/_assets/67426-b75a8a2b8268549d.js", method: "GET" },
   response: {
@@ -243,8 +243,34 @@ assert(
   functionParameterResult.body.includes("peekMode:d,redirect:c"),
   "function parameter destructuring must not be rewritten",
 );
+assert(
+  functionParameterResult.body.includes("function q({environment:e,store:t,peekMode:d,openInNew:s})"),
+  "function parameter destructuring that resembles an open call must not be rewritten",
+);
 assert(functionParameterResult.body.includes('open({environment:e,store:t,peekMode:"center_peek"'));
 new Function(functionParameterResult.body);
+
+const destructuringAsset =
+  'function r(e){let{environment:n,store:a,mainEditorCurrentBlockStore:l,peekCollectionData:s,fullyQualified:d,overridePeekMode:c,showMoveTo:u}=e;return c}function o(e){let{environment:r,store:o,peekMode:p,openInNew:a}=e;return p}open({environment:e,store:t,peekMode:d,openInNew:s});';
+const destructuringResult = runSurgeScript({
+  request: { url: "https://www.notion.so/_assets/67426-b75a8a2b8268549d.js", method: "GET" },
+  response: {
+    status: 200,
+    headers: { "content-type": "text/javascript" },
+    body: destructuringAsset,
+  },
+});
+assert(destructuringResult.body, "destructuring fixture should still patch call sites");
+assert(
+  destructuringResult.body.includes("overridePeekMode:c,showMoveTo:u}=e"),
+  "destructuring bindings must not be rewritten",
+);
+assert(
+  destructuringResult.body.includes("peekMode:p,openInNew:a}=e"),
+  "peekMode destructuring bindings must not be rewritten",
+);
+assert(destructuringResult.body.includes('open({environment:e,store:t,peekMode:"center_peek"'));
+new Function(destructuringResult.body);
 
 const skippedAssetResult = runSurgeScript({
   request: { url: "https://www.notion.so/_assets/app-f37b78ccba80bafb.js", method: "GET" },
