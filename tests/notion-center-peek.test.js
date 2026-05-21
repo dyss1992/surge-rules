@@ -146,6 +146,39 @@ assert.equal(
   "center_peek",
 );
 
+const fanoutTransaction = {
+  transactions: [
+    {
+      operations: [
+        {
+          pointer: { table: "collection_view", id: "new-view", spaceId: "s" },
+          path: [],
+          command: "set",
+          args: {
+            id: "new-view",
+            type: "table",
+            format: { table_wrap: false },
+          },
+        },
+      ],
+    },
+  ],
+};
+
+const fanoutRequestResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/api/v3/saveTransactionsFanout",
+    method: "POST",
+    body: JSON.stringify(fanoutTransaction),
+  },
+});
+assert(fanoutRequestResult.body, "fanout request body should be changed");
+assert.equal(
+  JSON.parse(fanoutRequestResult.body).transactions[0].operations[0].args.format
+    .collection_peek_mode,
+  "center_peek",
+);
+
 const urlResult = runSurgeScript({
   request: {
     url: "https://www.notion.so/example?p=abc&pm=s",
@@ -281,6 +314,37 @@ assert(
   ),
 );
 
+const collectionViewUrlBuilderAsset =
+  'let a=o(457498).wy({environment:t,store:i,mainEditorCurrentBlockStore:n,peekCollectionData:o(457498).q0(r),fullyQualified:!1});let b=o(457498).wy({environment:t,store:i,mainEditorCurrentBlockStore:n,peekCollectionData:o(457498).q0(r),fullyQualified:!1,overridePeekMode:h?"side_peek":void 0});let c=(0,o(553180).V)({environment:t,store:i,peekMode:u,resultsStore:r,peekCollectionData:d});';
+const collectionViewUrlBuilderResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/_assets/CollectionViewBlock-88dbba0bb96d8b72.js",
+    method: "GET",
+  },
+  response: {
+    status: 200,
+    headers: { "content-type": "application/javascript" },
+    body: collectionViewUrlBuilderAsset,
+  },
+});
+assert(collectionViewUrlBuilderResult.body, "collection view URL builder should be changed");
+assert(
+  collectionViewUrlBuilderResult.body.includes(
+    'peekCollectionData:o(457498).q0(r),overridePeekMode:"center_peek",fullyQualified:!1',
+  ),
+);
+assert(
+  collectionViewUrlBuilderResult.body.includes(
+    'fullyQualified:!1,overridePeekMode:"center_peek"',
+  ),
+);
+assert(
+  !collectionViewUrlBuilderResult.body.includes(
+    'peekMode:u,overridePeekMode:"center_peek"',
+  ),
+  "open calls with explicit peekMode should not get overridePeekMode inserted",
+);
+
 assert(moduleSource.includes("#!arguments=target_mode:center_peek"));
 assert(moduleSource.includes("fallback_peek_mode:target"));
 assert(moduleSource.includes("argument=\"target_mode={{{target_mode}}}"));
@@ -290,6 +354,7 @@ const saveRequestPatternMatch = moduleSource.match(/notion-peek-save-request = .
 assert(saveRequestPatternMatch, "save request script pattern should exist in module");
 const saveRequestPattern = new RegExp(saveRequestPatternMatch[1]);
 assert(saveRequestPattern.test("https://www.notion.so/api/v3/saveTransactions"));
+assert(saveRequestPattern.test("https://www.notion.so/api/v3/saveTransactionsFanout"));
 assert(!saveRequestPattern.test("https://www.notion.so/example?p=abc&pm=s"));
 assert(!saveRequestPattern.test("https://www.notion.so/api/v3/getActiveThreadsForBlocks"));
 

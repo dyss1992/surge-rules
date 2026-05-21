@@ -20,7 +20,7 @@
   const ASSET_BODY_LIMIT = 4 * 1024 * 1024;
   const API_RESPONSE_PATTERN =
     /\/api\/v3\/(?:loadPageChunk|loadCachedPageChunkV2|queryCollection|syncRecordValues|syncRecordValuesSpaceInitial|getCollectionData|getRecordValues|getPublicPageData)(?:$|[/?#])/;
-  const SAVE_TRANSACTIONS_PATTERN = /\/api\/v3\/saveTransactions(?:$|[/?#])/;
+  const SAVE_TRANSACTIONS_PATTERN = /\/api\/v3\/saveTransactions(?:Fanout)?(?:$|[/?#])/;
   const ASSET_WHITELIST_PATTERN =
     /\/_assets\/(?:(?:61315|71688|67535)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
   const RELATION_ASSET_PATTERN =
@@ -219,6 +219,13 @@
       typeof pointer === "object" &&
       (pointer.table === "collection_view" || pointer.table === "collection_view_v2");
 
+    if (isCollectionView) {
+      changed = patchCollectionViewValue(operation.args) || changed;
+      changed =
+        patchCollectionViewValue(operation.args && operation.args.value) ||
+        changed;
+    }
+
     if (isCollectionView && Array.isArray(operation.path)) {
       const path = operation.path.join(".");
       if (path === "format.collection_peek_mode" && operation.args !== COLLECTION_VIEW_MODE) {
@@ -382,10 +389,19 @@
         searchIndex = objectEnd + 1;
         continue;
       }
+      if (
+        options.blockedTokens &&
+        options.blockedTokens.some(token => objectText.indexOf(token) !== -1)
+      ) {
+        searchIndex = objectEnd + 1;
+        continue;
+      }
 
-      const peekIndex = objectText.indexOf("peekMode:");
+      const propertyName = options.propertyName || "peekMode";
+      const propertyToken = `${propertyName}:`;
+      const peekIndex = objectText.indexOf(propertyToken);
       if (peekIndex !== -1) {
-        const valueStart = searchIndex + peekIndex + "peekMode:".length;
+        const valueStart = searchIndex + peekIndex + propertyToken.length;
         const valueEnd = findExpressionEnd(text, valueStart, objectEnd);
         if (valueEnd !== -1) {
           const replacementValue = `"${options.mode}"`;
@@ -405,7 +421,7 @@
           replacements.push({
             start: valueEnd,
             end: valueEnd,
-            value: `,peekMode:"${options.mode}"`,
+            value: `,${propertyToken}"${options.mode}"`,
           });
         }
       }
@@ -450,6 +466,15 @@
       startToken: "{environment:",
       requiredTokens: ["store:", "peekMode:"],
       mode: openCallMode,
+    });
+
+    next = patchPeekModeInObjects(next, {
+      startToken: "{environment:",
+      requiredTokens: ["store:", "mainEditorCurrentBlockStore:", "peekCollectionData:"],
+      insertAfterToken: "peekCollectionData:",
+      propertyName: "overridePeekMode",
+      blockedTokens: ["peekMode:"],
+      mode: COLLECTION_VIEW_MODE,
     });
 
     if (isRelationAssetUrl(url)) {
