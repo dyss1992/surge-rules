@@ -373,6 +373,67 @@
     return -1;
   }
 
+  function findMatchingParenEnd(text, openParenIndex, maxDistance) {
+    let parenDepth = 0;
+    let bracketDepth = 0;
+    let braceDepth = 0;
+    let quote = "";
+    let escaped = false;
+    const endIndex = Math.min(text.length, openParenIndex + maxDistance);
+
+    for (let index = openParenIndex; index < endIndex; index += 1) {
+      const char = text[index];
+
+      if (quote) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === quote) {
+          quote = "";
+        }
+        continue;
+      }
+
+      if (char === "\"" || char === "'" || char === "`") {
+        quote = char;
+      } else if (char === "(") {
+        parenDepth += 1;
+      } else if (char === ")") {
+        parenDepth -= 1;
+        if (parenDepth === 0 && bracketDepth === 0 && braceDepth === 0) return index;
+      } else if (char === "[") {
+        bracketDepth += 1;
+      } else if (char === "]") {
+        bracketDepth = Math.max(0, bracketDepth - 1);
+      } else if (char === "{") {
+        braceDepth += 1;
+      } else if (char === "}") {
+        braceDepth = Math.max(0, braceDepth - 1);
+      }
+    }
+
+    return -1;
+  }
+
+  function isLikelyFunctionParameterObject(text, objectStart, objectEnd) {
+    let openParenIndex = objectStart - 1;
+    while (openParenIndex >= 0 && /\s/.test(text[openParenIndex])) openParenIndex -= 1;
+    if (text[openParenIndex] !== "(") return false;
+
+    const closeParenIndex = findMatchingParenEnd(text, openParenIndex, 5000);
+    if (closeParenIndex === -1 || closeParenIndex < objectEnd) return false;
+
+    let afterParenIndex = closeParenIndex + 1;
+    while (afterParenIndex < text.length && /\s/.test(text[afterParenIndex])) afterParenIndex += 1;
+    if (text[afterParenIndex] === "{" || text.slice(afterParenIndex, afterParenIndex + 2) === "=>") {
+      return true;
+    }
+
+    const beforeParen = text.slice(Math.max(0, openParenIndex - 80), openParenIndex);
+    return /\bfunction\s*[$A-Z_a-z][$\w]*\s*$/.test(beforeParen);
+  }
+
   function patchPeekModeInObjects(text, options) {
     const replacements = [];
     let searchIndex = 0;
@@ -393,6 +454,10 @@
         options.blockedTokens &&
         options.blockedTokens.some(token => objectText.indexOf(token) !== -1)
       ) {
+        searchIndex = objectEnd + 1;
+        continue;
+      }
+      if (isLikelyFunctionParameterObject(text, searchIndex, objectEnd)) {
         searchIndex = objectEnd + 1;
         continue;
       }
