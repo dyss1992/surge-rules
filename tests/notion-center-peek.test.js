@@ -203,6 +203,19 @@ const fullPageUrlResult = runSurgeScript({
 });
 assert.equal(fullPageUrlResult.url, "https://www.notion.so/example?p=abc&pm=c");
 
+const runtimeAssetCompressionRequestResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js",
+    method: "GET",
+    headers: { "Accept-Encoding": "gzip, deflate, br, zstd" },
+  },
+});
+assert(runtimeAssetCompressionRequestResult.headers, "runtime asset request headers should change");
+assert.equal(
+  runtimeAssetCompressionRequestResult.headers["Accept-Encoding"],
+  "identity",
+);
+
 const assetBody =
   'x;let i={table:"side_peek",board:"side_peek",calendar:"center_peek",list:"side_peek",gallery:"center_peek",timeline:"side_peek",page:"side_peek",chat:"side_peek"};const q="?pm=s";function Row({peekMode:u,openInNew:l}){return u}let fallback=(null==e?void 0:e.normalizedFormatStore.state.collection_peek_mode)??(o?r(476670).C9[o]:"side_peek");open({environment:t,store:i,peekMode:u,openInNew:l});openParent({from:"relation_property",peekMode:"side_peek"});const params={pm:"s"};y';
 const assetResult = runSurgeScript({
@@ -472,6 +485,16 @@ assert(moduleSource.includes("#!arguments=target_mode:center_peek"));
 assert(moduleSource.includes("fallback_peek_mode:target"));
 assert(moduleSource.includes("argument=\"target_mode={{{target_mode}}}"));
 assert(moduleSource.includes("fallback_peek_mode={{{fallback_peek_mode}}}"));
+
+const assetRequestPatternMatch = moduleSource.match(
+  /notion-peek-runtime-asset-request = .*pattern=([^,]+)/,
+);
+assert(assetRequestPatternMatch, "runtime asset request script pattern should exist in module");
+const assetRequestPattern = new RegExp(assetRequestPatternMatch[1]);
+assert(assetRequestPattern.test("https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js"));
+assert(assetRequestPattern.test("https://www.notion.so/_assets/67426-b75a8a2b8268549d.js"));
+assert(!assetRequestPattern.test("https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js"));
+assert(!assetRequestPattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
 
 const saveRequestPatternMatch = moduleSource.match(/notion-peek-save-request = .*pattern=([^,]+)/);
 assert(saveRequestPatternMatch, "save request script pattern should exist in module");

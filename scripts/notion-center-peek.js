@@ -24,6 +24,8 @@
   const SAVE_TRANSACTIONS_PATTERN = /\/api\/v3\/saveTransactions(?:Fanout)?(?:$|[/?#])/;
   const ASSET_WHITELIST_PATTERN =
     /\/_assets\/(?:experimental\/)?(?:(?:61315|71688|67535|67426)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
+  const RUNTIME_ACTION_ASSET_PATTERN =
+    /\/_assets\/(?:experimental\/)?67426-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const NUMERIC_ACTION_ASSET_PATTERN =
     /\/_assets\/(?:experimental\/)?27899-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const RELATION_ASSET_PATTERN =
@@ -149,6 +151,10 @@
     );
   }
 
+  function isRuntimeActionAssetUrl(url) {
+    return typeof url === "string" && RUNTIME_ACTION_ASSET_PATTERN.test(url);
+  }
+
   function getAssetBodyLimit(url) {
     if (
       typeof url === "string" &&
@@ -162,6 +168,17 @@
 
   function isRelationAssetUrl(url) {
     return typeof url === "string" && RELATION_ASSET_PATTERN.test(url);
+  }
+
+  function patchRuntimeAssetRequestHeaders(url, headers) {
+    if (!isRuntimeActionAssetUrl(url)) return { changed: false, headers };
+    if (getHeader(headers, "Accept-Encoding").toLowerCase() === "identity") {
+      return { changed: false, headers };
+    }
+    return {
+      changed: true,
+      headers: setHeader(headers, "Accept-Encoding", "identity"),
+    };
   }
 
   function shouldPatchJsonBody(body, url, headers) {
@@ -666,6 +683,12 @@
   let changed = false;
 
   if (typeof $request !== "undefined" && $request && $request.url) {
+    const headerResult = patchRuntimeAssetRequestHeaders($request.url, $request.headers || {});
+    if (headerResult.changed) {
+      result.headers = headerResult.headers;
+      changed = true;
+    }
+
     const urlResult = normalizeUrl($request.url);
     if (urlResult.changed) {
       result.url = urlResult.value;
