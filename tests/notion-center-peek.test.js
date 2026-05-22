@@ -228,6 +228,40 @@ assert(runtimeAssetResult.body.includes('table:"center_peek"'));
 assert(runtimeAssetResult.body.includes('??(o?r(476670).C9[o]:"center_peek")'));
 assert(runtimeAssetResult.body.includes('pm:"c"'));
 
+const experimentalRuntimeAssetResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js",
+    method: "GET",
+  },
+  response: { status: 200, headers: { "content-type": "text/javascript" }, body: assetBody },
+});
+assert(experimentalRuntimeAssetResult.body, "experimental runtime asset body should be changed");
+assert(experimentalRuntimeAssetResult.body.includes('pm:"c"'));
+
+const navigationActionAsset =
+  'let p=(0,a(374743).Ay)({store:c,openInSidePeek:!0,peekViewBlockId:c.id,peekMode:"s",pageVisitSource:d});let q=(0,a(453573).Lm)({workflowId:o.workflowId,peekModeParam:"s",scrollToBlockId:void 0});let keep=function({openInSidePeek:e}){return e};';
+const navigationActionResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js",
+    method: "GET",
+  },
+  response: {
+    status: 200,
+    headers: { "content-type": "application/javascript" },
+    body: navigationActionAsset,
+  },
+});
+assert(navigationActionResult.body, "small numeric navigation action asset should be changed");
+assert(navigationActionResult.body.includes("openInCenterPeek:!0"));
+assert(!navigationActionResult.body.includes("openInSidePeek:!0"));
+assert(navigationActionResult.body.includes('peekMode:"c"'));
+assert(navigationActionResult.body.includes('peekModeParam:"c"'));
+assert(
+  navigationActionResult.body.includes("function({openInSidePeek:e})"),
+  "destructuring parameters should not be changed by explicit open flag patch",
+);
+new Function(navigationActionResult.body);
+
 const functionParameterAsset =
   'function n({environment:e,store:t,pageVisitSource:r,visitType:l,openInNew:s,peekMode:d,redirect:c}){return d}function q({environment:e,store:t,peekMode:d,openInNew:s}){return d}open({environment:e,store:t,peekMode:d,openInNew:s});';
 const functionParameterResult = runSurgeScript({
@@ -340,6 +374,23 @@ assert(customAssetResult.body.includes('open({environment:t,store:i,peekMode:"fu
 assert(customAssetResult.body.includes('openParent({from:"relation_property",peekMode:"side_peek"})'));
 assert(customAssetResult.body.includes('pm:"f"'));
 
+const customNavigationActionResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js",
+    method: "GET",
+  },
+  response: {
+    status: 200,
+    headers: { "content-type": "application/javascript" },
+    body: navigationActionAsset,
+  },
+  argument: customArgument,
+});
+assert(customNavigationActionResult.body, "custom navigation action asset should be changed");
+assert(customNavigationActionResult.body.includes("openInSidePeek:!1"));
+assert(customNavigationActionResult.body.includes('peekMode:"f"'));
+assert(customNavigationActionResult.body.includes('peekModeParam:"f"'));
+
 const relationAssetBody =
   'let z=j&&e?j.getFormatStore().getKeyValue("collection_peek_mode")??n(476670).C9[e]:n(475097).default.state.mode;(0,n(553180).V)({environment:t,store:i,peekMode:u,openInNew:l,resultsStore:r,peekCollectionData:d,pageVisitSource:n(254656).y8.PeekOpen});let d=(0,n(234310).A)({pageId:c.id,pageModel:e,baseUrl:t,peekViewBlockId:u.id,pageVisitSource:n(254656).y8.MentionInPage});let q=(0,n(234310).A)({pageId:c.id,pageModel:e,baseUrl:t,peekViewBlockId:u.id,peekMode:(0,n(328823).f)("full_page"===l?void 0:l??n(475097).default.state.mode),pageVisitSource:n(254656).y8.MentionInPage})';
 const relationAssetResult = runSurgeScript({
@@ -434,18 +485,32 @@ assert(assetResponsePattern.test("https://www.notion.so/_assets/61315-155b153055
 assert(assetResponsePattern.test("https://www.notion.so/_assets/71688-e34e6503c2f2c1ee.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/67535-696bada3b43698b0.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/67426-b75a8a2b8268549d.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/RelationPropertyWithEdges-e8ca79f7e53b5a56.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/experimental/RelationPropertyWithEdges-e8ca79f7e53b5a56.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/RelationMenuRow-deb278cf92066cae.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/createRelationViewsModule-7717e10f8cbb230f.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/BlockPropertyRouter-2cff2062b0864e1a.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/peekRenderer-cf552f7a2cb863af.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/CollectionViewBlock-2a85c7e230ae3bdd.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/experimental/CollectionViewBlock-67b8369483bac03e.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/RecordStore-c0e43bffee395906.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/PagePropertiesRowNameMenu-707f058897e8b67d.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/example.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/ClientFramework-a9bca7b48ce7d38f.js"));
 assert(!assetResponsePattern.test("https://www.notion.so/_assets/notion.css"));
+
+const smallActionAssetPatternMatch = moduleSource.match(
+  /notion-peek-small-action-asset-response = .*pattern=([^,]+)/,
+);
+assert(smallActionAssetPatternMatch, "small action asset response script pattern should exist");
+const smallActionAssetPattern = new RegExp(smallActionAssetPatternMatch[1]);
+assert(smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js"));
+assert(smallActionAssetPattern.test("https://www.notion.so/_assets/27899-594a45964d4c8fd7.js"));
+assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js"));
+assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
+assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/notion.css"));
 const mitmHostnameMatch = moduleSource.match(/^hostname\s*=\s*(.*)$/m);
 assert(mitmHostnameMatch, "MITM hostname line should exist");
 assert(

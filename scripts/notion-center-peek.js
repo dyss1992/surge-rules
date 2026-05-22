@@ -18,15 +18,18 @@
   const BODY_TYPES = new Set(["string", "object"]);
   const JSON_BODY_LIMIT = 3 * 1024 * 1024;
   const ASSET_BODY_LIMIT = 4 * 1024 * 1024;
+  const SMALL_NUMERIC_ASSET_BODY_LIMIT = 512 * 1024;
   const API_RESPONSE_PATTERN =
     /\/api\/v3\/(?:loadPageChunk|loadCachedPageChunkV2|queryCollection|syncRecordValues|syncRecordValuesSpaceInitial|getCollectionData|getRecordValues|getPublicPageData)(?:$|[/?#])/;
   const SAVE_TRANSACTIONS_PATTERN = /\/api\/v3\/saveTransactions(?:Fanout)?(?:$|[/?#])/;
   const ASSET_WHITELIST_PATTERN =
-    /\/_assets\/(?:(?:61315|71688|67535|67426)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
+    /\/_assets\/(?:experimental\/)?(?:(?:61315|71688|67535|67426)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
+  const SMALL_NUMERIC_ASSET_PATTERN =
+    /\/_assets\/(?:experimental\/)?(?!(?:61315|71688|67535|67426)-)[0-9]+-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const RELATION_ASSET_PATTERN =
-    /\/_assets\/[A-Za-z0-9]*Relation[A-Za-z0-9]*-[A-Za-z0-9]+\.js(?:$|[?#])/;
+    /\/_assets\/(?:experimental\/)?[A-Za-z0-9]*Relation[A-Za-z0-9]*-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const TEXT_SIGNAL_PATTERN =
-    /collection_peek_mode|side_peek|center_peek|full_page|relation_property|peekViewBlockId|peekMode:|[?&]pm=|pm:\s*["']/;
+    /collection_peek_mode|side_peek|center_peek|full_page|relation_property|peekViewBlockId|peekMode:|peekModeParam:|openInSidePeek|openInCenterPeek|[?&]pm=|pm:\s*["']/;
 
   function decodeArg(value) {
     try {
@@ -120,7 +123,21 @@
   }
 
   function isWhitelistedAssetUrl(url) {
-    return typeof url === "string" && ASSET_WHITELIST_PATTERN.test(url);
+    return (
+      typeof url === "string" &&
+      (ASSET_WHITELIST_PATTERN.test(url) || SMALL_NUMERIC_ASSET_PATTERN.test(url))
+    );
+  }
+
+  function getAssetBodyLimit(url) {
+    if (
+      typeof url === "string" &&
+      SMALL_NUMERIC_ASSET_PATTERN.test(url) &&
+      !ASSET_WHITELIST_PATTERN.test(url)
+    ) {
+      return SMALL_NUMERIC_ASSET_BODY_LIMIT;
+    }
+    return ASSET_BODY_LIMIT;
   }
 
   function isRelationAssetUrl(url) {
@@ -142,7 +159,7 @@
   function shouldPatchTextBody(body, url, headers) {
     if (typeof body !== "string") return false;
     if (!isWhitelistedAssetUrl(url)) return false;
-    if (body.length > ASSET_BODY_LIMIT) return false;
+    if (body.length > getAssetBodyLimit(url)) return false;
 
     const contentType = getHeader(headers, "content-type").toLowerCase();
     if (
@@ -510,9 +527,29 @@
     return applyTextReplacements(text, replacements);
   }
 
+  function patchExplicitOpenFlags(text, mode) {
+    if (mode === "center_peek") {
+      return text.replace(
+        /\bopenIn(?:Side|Center)Peek\s*:\s*(?:!0|true)\b/g,
+        "openInCenterPeek:!0",
+      );
+    }
+    if (mode === "side_peek") {
+      return text.replace(
+        /\bopenIn(?:Side|Center)Peek\s*:\s*(?:!0|true)\b/g,
+        "openInSidePeek:!0",
+      );
+    }
+    return text.replace(
+      /\b(openIn(?:Side|Center)Peek\s*:\s*)(?:!0|true)\b/g,
+      "$1!1",
+    );
+  }
+
   function patchTextBody(body, url, headers) {
     if (!shouldPatchTextBody(body, url, headers)) return { changed: false, body };
     const openCallMode = isRelationAssetUrl(url) ? RELATION_PROPERTY_MODE : CLIENT_OPEN_MODE;
+    const openCallPm = MODE_TO_PM[openCallMode] || URL_PM;
     const modeRegex = new RegExp(`"collection_peek_mode"\\s*:\\s*"${MODE_PATTERN}"`, "g");
     let next = body.replace(
       modeRegex,
@@ -545,7 +582,14 @@
         },
       )
       .replace(new RegExp(`([?&]pm=)${PM_PATTERN}\\b`, "g"), `$1${URL_PM}`)
-      .replace(new RegExp(`pm:\\s*["']${PM_PATTERN}["']`, "g"), `pm:"${URL_PM}"`);
+      .replace(new RegExp(`pm:\\s*["']${PM_PATTERN}["']`, "g"), `pm:"${URL_PM}"`)
+      .replace(
+        new RegExp(`peekModeParam:\\s*["']${PM_PATTERN}["']`, "g"),
+        `peekModeParam:"${openCallPm}"`,
+      )
+      .replace(/\bpeekMode\s*:\s*["'](?:c|s|f)["']/g, `peekMode:"${openCallPm}"`);
+
+    next = patchExplicitOpenFlags(next, openCallMode);
 
     next = patchPeekModeInObjects(next, {
       startToken: "{environment:",
