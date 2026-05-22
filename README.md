@@ -14,7 +14,7 @@ It works by rewriting Notion HTTPS traffic after Surge MITM decryption:
 - Notion frontend defaults for database, relation, no-view fallback, and matched open calls are patched toward the configured modes when they are present in the asset whitelist
 - explicit frontend actions such as `Open in side peek` are redirected toward the configured client open mode
 
-The request-side rules are intentionally split between Notion's save endpoint and peek URLs. The response-side rules are limited to page/database loading endpoints plus a semantic whitelist of frontend chunks whose names relate to Relation pages, peek rendering, database views, and page properties. Legacy chunk IDs (`61315-*`, `71688-*`, and `67535-*`) are still included for older cached Notion builds, and the confirmed numeric action chunk `27899-*` is allowed under a tight size cap. Broader runtime chunks such as `67426-*` are intentionally skipped because they also carry Notion desktop tab and quick-search behavior. This avoids sending every Notion `_assets/` JS/CSS/image/font response through the script and keeps Surge Recent Requests much smaller.
+The request-side rules are intentionally split between Notion's save endpoint and peek URLs. The response-side rules are limited to page/database loading endpoints plus a semantic whitelist of frontend chunks whose names relate to Relation pages, peek rendering, database views, and page properties. Legacy chunk IDs (`61315-*`, `71688-*`, and `67535-*`) are still included for older cached Notion builds. Confirmed numeric action chunks are limited to the small row-open chunk `27899-*` and the current runtime page-open chunk `67426-*`; the module still skips unrelated large numeric chunks instead of processing the whole Notion frontend.
 
 ### Request Scope
 
@@ -26,15 +26,16 @@ Processed:
 - whitelisted Notion frontend chunks under `_assets/` and `_assets/experimental/`:
   - legacy cached chunks: `61315-*`, `71688-*`, and `67535-*`
   - confirmed numeric action chunks that contain peek/open signals, currently `27899-*`, capped at 768 KiB before script processing
+  - the confirmed runtime page-open chunk `67426-*`, capped at 4 MiB before script processing
   - semantic Relation chunks such as `RelationPropertyWithEdges-*`, `RelationPropertyOverlayWithEdges-*`, `RelationPropertyMenu-*`, `RelationMenuRow-*`, and `createRelationViewsModule-*`
   - selected peek/database/page-property chunks such as `CollectionViewBlock-*`, `BlockPropertyRouter-*`, `peekRenderer-*`, `PagePropertiesRowNameMenu-*`, `RecordStore-*`, `formPropertyRenderer-*`, `RollupPropertyMenu-*`, and `PropertyModulePersonProperty-*`
 
 Skipped:
 
 - unrelated Notion API calls, including telemetry and AI/background endpoints
-- generic `_assets/` files such as app bundles, framework bundles, CSS, images, fonts, source maps, large numeric JS chunks, and unrelated JS chunks
+- generic `_assets/` files such as app bundles, framework bundles, CSS, images, fonts, source maps, unconfirmed large numeric JS chunks, and unrelated JS chunks
 - responses whose content type, size, URL, or text content clearly does not need peek-mode rewriting
-- large API responses above 3 MiB, whitelisted frontend asset responses above 4 MiB, and confirmed numeric action chunks above 768 KiB
+- large API responses above 3 MiB, whitelisted frontend asset responses above 4 MiB, and the small `27899-*` action chunk above 768 KiB
 
 ### Install
 
@@ -103,7 +104,7 @@ Common examples:
 
 ### Limits
 
-This is an unofficial workaround. It depends on Notion continuing to send compatible JSON records or compatible frontend asset text. The asset whitelist is based on chunk names instead of exact hashes where possible, and confirmed numeric action chunks are allowed only below a tight size cap so database row open actions can be covered without processing the whole Notion frontend bundle. Already loaded Notion frontend code cannot be changed retroactively, so parameter changes may still need a Notion restart or page reload before they are visible.
+This is an unofficial workaround. It depends on Notion continuing to send compatible JSON records or compatible frontend asset text. The asset whitelist is based on chunk names instead of exact hashes where possible, and confirmed numeric action chunks are explicitly named so database row open actions can be covered without processing the whole Notion frontend bundle. Already loaded Notion frontend code cannot be changed retroactively, so parameter changes may still need a Notion restart or page reload before they are visible.
 
 ### Validation
 

@@ -23,7 +23,7 @@
     /\/api\/v3\/(?:loadPageChunk|loadCachedPageChunkV2|queryCollection|syncRecordValues|syncRecordValuesSpaceInitial|getCollectionData|getRecordValues|getPublicPageData)(?:$|[/?#])/;
   const SAVE_TRANSACTIONS_PATTERN = /\/api\/v3\/saveTransactions(?:Fanout)?(?:$|[/?#])/;
   const ASSET_WHITELIST_PATTERN =
-    /\/_assets\/(?:experimental\/)?(?:(?:61315|71688|67535)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
+    /\/_assets\/(?:experimental\/)?(?:(?:61315|71688|67535|67426)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
   const NUMERIC_ACTION_ASSET_PATTERN =
     /\/_assets\/(?:experimental\/)?27899-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const RELATION_ASSET_PATTERN =
@@ -587,8 +587,8 @@
         match => match.replace(new RegExp(`:"${MODE_PATTERN}"`), `:"${FALLBACK_PEEK_MODE}"`),
       )
       .replace(
-        new RegExp(`(from:\\s*"relation_property"\\s*,\\s*peekMode:\\s*)"${MODE_PATTERN}"`, "g"),
-        `$1"${RELATION_PROPERTY_MODE}"`,
+        new RegExp(`\\bpeekMode\\s*:\\s*["']${MODE_PATTERN}["']`, "g"),
+        `peekMode:"${openCallMode}"`,
       )
       .replace(
         /((?:\)|[$A-Z_a-z][$\w]*)\s*\(\s*\{environment:[^{};]{0,500}?store:[^{};]{0,500}?peekMode:)[$A-Z_a-z][$\w]*(,openInNew)/g,
@@ -606,6 +606,10 @@
       .replace(
         new RegExp(`peekModeParam:\\s*["']${PM_PATTERN}["']`, "g"),
         `peekModeParam:"${openCallPm}"`,
+      )
+      .replace(
+        new RegExp(`(from:\\s*"relation_property"\\s*,\\s*peekMode:\\s*)"${MODE_PATTERN}"`, "g"),
+        `$1"${RELATION_PROPERTY_MODE}"`,
       )
       .replace(/\bpeekMode\s*:\s*["'](?:c|s|f)["']/g, `peekMode:"${openCallPm}"`);
 

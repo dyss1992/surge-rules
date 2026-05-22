@@ -224,22 +224,38 @@ assert.equal(assetResult.headers.Expires, "0");
 
 const runtimeAssetResult = runSurgeScript({
   request: { url: "https://www.notion.so/_assets/67426-b75a8a2b8268549d.js", method: "GET" },
-  response: { status: 200, headers: { "content-type": "text/javascript" }, body: assetBody },
+  response: {
+    status: 200,
+    headers: { "content-type": "text/javascript" },
+    body:
+      'let a=(0,i(374743).Ay)({store:e,openInSidePeek:!0,fullyQualified:!1,pageVisitSource:i(254656).y8.PeekOpen});let b={tableUrlParams:t,peekViewBlockId:i,peekMode:"s"};let c=(0,i(374743).Ay)({store:o,peekViewBlockId:o.id,peekMode:"side_peek",fullyQualified:!1,openInSidePeek:!0});let keep=function({openInSidePeek:e}){return e};',
+  },
 });
-assert.deepEqual(runtimeAssetResult, {}, "large runtime asset should be skipped");
+assert(runtimeAssetResult.body, "large numeric runtime action asset should be changed");
+assert(runtimeAssetResult.body.includes("openInCenterPeek:!0"));
+assert(!runtimeAssetResult.body.includes("openInSidePeek:!0"));
+assert(runtimeAssetResult.body.includes('peekMode:"c"'));
+assert(runtimeAssetResult.body.includes('peekMode:"center_peek"'));
+assert(
+  runtimeAssetResult.body.includes("function({openInSidePeek:e})"),
+  "destructuring parameters should not be changed in runtime assets",
+);
+assert.equal(runtimeAssetResult.headers["Cache-Control"], "no-store");
 
 const experimentalRuntimeAssetResult = runSurgeScript({
   request: {
     url: "https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js",
     method: "GET",
   },
-  response: { status: 200, headers: { "content-type": "text/javascript" }, body: assetBody },
+  response: {
+    status: 200,
+    headers: { "content-type": "text/javascript" },
+    body: 'let a=(0,i(374743).Ay)({store:e,openInSidePeek:!0,peekViewBlockId:e.id,peekMode:"s"});',
+  },
 });
-assert.deepEqual(
-  experimentalRuntimeAssetResult,
-  {},
-  "experimental large runtime asset should be skipped",
-);
+assert(experimentalRuntimeAssetResult.body, "experimental runtime action asset should be changed");
+assert(experimentalRuntimeAssetResult.body.includes("openInCenterPeek:!0"));
+assert(experimentalRuntimeAssetResult.body.includes('peekMode:"c"'));
 
 const navigationActionAsset =
   'let p=(0,a(374743).Ay)({store:c,openInSidePeek:!0,peekViewBlockId:c.id,peekMode:"s",pageVisitSource:d});let q=(0,a(453573).Lm)({workflowId:o.workflowId,peekModeParam:"s",scrollToBlockId:void 0});let keep=function({openInSidePeek:e}){return e};';
@@ -487,8 +503,8 @@ const assetResponsePattern = new RegExp(assetResponsePatternMatch[1]);
 assert(assetResponsePattern.test("https://www.notion.so/_assets/61315-155b15305540931a.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/71688-e34e6503c2f2c1ee.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/67535-696bada3b43698b0.js"));
-assert(!assetResponsePattern.test("https://www.notion.so/_assets/67426-b75a8a2b8268549d.js"));
-assert(!assetResponsePattern.test("https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/67426-b75a8a2b8268549d.js"));
+assert(assetResponsePattern.test("https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/RelationPropertyWithEdges-e8ca79f7e53b5a56.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/experimental/RelationPropertyWithEdges-e8ca79f7e53b5a56.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/RelationMenuRow-deb278cf92066cae.js"));
