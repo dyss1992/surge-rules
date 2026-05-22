@@ -220,13 +220,14 @@ const serviceWorkerRequestResult = runSurgeScript({
   request: {
     url: "https://www.notion.so/sw.js",
     method: "GET",
-    headers: { "Accept-Encoding": "gzip, deflate, br, zstd" },
+    headers: { "Accept-Encoding": "gzip, deflate, br, zstd", "Service-Worker": "script" },
   },
 });
 assert(serviceWorkerRequestResult.headers, "service worker request headers should change");
 assert.equal(serviceWorkerRequestResult.headers["Accept-Encoding"], "identity");
 assert.equal(serviceWorkerRequestResult.headers["Cache-Control"], "no-cache");
 assert.equal(serviceWorkerRequestResult.headers.Pragma, "no-cache");
+assert.equal(serviceWorkerRequestResult.headers["Service-Worker"], undefined);
 
 const serviceWorkerBody =
   'class S{shouldBypassCache(t){if("GET"!==t.method)return!0;let r=new URL(t.url);if(r.hostname!==this.hostname)return!0;if(this.assetsJson){for(let t of this.assetsJson.proxyServerPathPrefixes??[])if(r.pathname.startsWith(t))return!0}return!1}async matchRequest(t){return fetch(t)}}';

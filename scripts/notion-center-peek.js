@@ -145,6 +145,18 @@
     return next;
   }
 
+  function removeHeader(headers, name) {
+    const next = {};
+    if (headers && typeof headers === "object") {
+      for (const key of Object.keys(headers)) {
+        if (key.toLowerCase() !== name.toLowerCase()) {
+          next[key] = headers[key];
+        }
+      }
+    }
+    return next;
+  }
+
   function withNoStoreHeaders(headers) {
     let next = setHeader(headers, "Cache-Control", "no-store");
     next = setHeader(next, "Pragma", "no-cache");
@@ -205,10 +217,12 @@
     let next = setHeader(headers, "Accept-Encoding", "identity");
     next = setHeader(next, "Cache-Control", "no-cache");
     next = setHeader(next, "Pragma", "no-cache");
+    next = removeHeader(next, "Service-Worker");
     const changed =
       getHeader(headers, "Accept-Encoding").toLowerCase() !== "identity" ||
       getHeader(headers, "Cache-Control").toLowerCase() !== "no-cache" ||
-      getHeader(headers, "Pragma").toLowerCase() !== "no-cache";
+      getHeader(headers, "Pragma").toLowerCase() !== "no-cache" ||
+      !!getHeader(headers, "Service-Worker");
     return { changed, headers: next };
   }
 
