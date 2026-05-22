@@ -15,7 +15,7 @@ It works by rewriting Notion HTTPS traffic after Surge MITM decryption:
 - explicit frontend actions such as `Open in side peek` are redirected toward the configured client open mode
 - Notion's Service Worker fetches are narrowed where Surge can see them, so the small set of peek-related frontend files is less likely to be reused from Notion's local frontend cache
 
-The request-side rules are intentionally split between Notion's Service Worker, Notion's save endpoint, peek URLs, and the confirmed runtime page-open chunk `67426-*`. The response-side rules are limited to the Service Worker when it is visible to Surge, page/database loading endpoints, and a semantic whitelist of frontend chunks whose names relate to Relation pages, peek rendering, database views, and page properties. Legacy chunk IDs (`61315-*`, `71688-*`, and `67535-*`) are still included for older cached Notion builds. Confirmed numeric action chunks are limited to the small row-open chunk `27899-*` and the current runtime page-open chunk `67426-*`; the module still skips unrelated large numeric chunks instead of processing the whole Notion frontend.
+The request-side rules are intentionally split between Notion's Service Worker, Notion's save endpoint, peek URLs, and the confirmed numeric action chunks `27899-*` and `67426-*`. The response-side rules are limited to the Service Worker when it is visible to Surge, page/database loading endpoints, and a semantic whitelist of frontend chunks whose names relate to Relation pages, peek rendering, database views, and page properties. Legacy chunk IDs (`61315-*`, `71688-*`, and `67535-*`) are still included for older cached Notion builds. Confirmed numeric action chunks are limited to the small row-open chunk `27899-*` and the current runtime page-open chunk `67426-*`; the module still skips unrelated large numeric chunks instead of processing the whole Notion frontend.
 
 ### Request Scope
 
@@ -25,7 +25,7 @@ Processed:
 - `api/v3/saveTransactions` and `api/v3/saveTransactionsFanout`
 - `sw.js`, only to reduce cases where peek-related frontend files are served out of Notion's Service Worker cache
 - Notion URLs that already include a `pm` peek parameter
-- the request for the confirmed runtime page-open chunk `67426-*`, where the module asks Notion for an uncompressed response so Surge can safely rewrite it
+- requests for the confirmed numeric action chunks `27899-*` and `67426-*`, where the module asks Notion for uncompressed responses so Surge can safely rewrite them
 - whitelisted Notion frontend chunks under `_assets/` and `_assets/experimental/`:
   - legacy cached chunks: `61315-*`, `71688-*`, and `67535-*`
   - confirmed numeric action chunks that contain peek/open signals, currently `27899-*`, capped at 768 KiB before script processing

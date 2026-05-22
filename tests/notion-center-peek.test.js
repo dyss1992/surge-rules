@@ -586,7 +586,8 @@ assert(assetRequestPatternMatch, "runtime asset request script pattern should ex
 const assetRequestPattern = new RegExp(assetRequestPatternMatch[1]);
 assert(assetRequestPattern.test("https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js"));
 assert(assetRequestPattern.test("https://www.notion.so/_assets/67426-b75a8a2b8268549d.js"));
-assert(!assetRequestPattern.test("https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js"));
+assert(assetRequestPattern.test("https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js"));
+assert(assetRequestPattern.test("https://www.notion.so/_assets/27899-594a45964d4c8fd7.js"));
 assert(!assetRequestPattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
 
 const serviceWorkerRequestPatternMatch = moduleSource.match(

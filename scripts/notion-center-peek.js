@@ -27,7 +27,7 @@
   const ASSET_WHITELIST_PATTERN =
     /\/_assets\/(?:experimental\/)?(?:(?:61315|71688|67535|67426)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
   const RUNTIME_ACTION_ASSET_PATTERN =
-    /\/_assets\/(?:experimental\/)?67426-[A-Za-z0-9]+\.js(?:$|[?#])/;
+    /\/_assets\/(?:experimental\/)?(?:27899|67426)-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const NUMERIC_ACTION_ASSET_PATTERN =
     /\/_assets\/(?:experimental\/)?27899-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const RELATION_ASSET_PATTERN =
