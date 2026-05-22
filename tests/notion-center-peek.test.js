@@ -245,6 +245,27 @@ assert(serviceWorkerResult.body.includes("if(r.hostname!==this.hostname)return!0
 assert.equal(serviceWorkerResult.headers["Cache-Control"], "no-store");
 new Function(serviceWorkerResult.body);
 
+const desktopServiceWorkerBody =
+  'class S{shouldPassthrough(e){if(e.hostname!==this.hostname||e.pathname.startsWith("/image/")&&!e.searchParams.get("offline"))return!0;for(let r of(this.assetsJson?.proxyServerPathPrefixes)??[])if(e.pathname.startsWith(r))return!0;return!1}async matchRequest(e,t){return this.shouldPassthrough(e)?fetch(t):fetch(t)}}';
+const desktopServiceWorkerResult = runSurgeScript({
+  request: { url: "https://www.notion.so/sw.js", method: "GET" },
+  response: {
+    status: 200,
+    headers: { "content-type": "text/javascript" },
+    body: desktopServiceWorkerBody,
+  },
+});
+assert(desktopServiceWorkerResult.body, "desktop service worker body should be changed");
+assert(desktopServiceWorkerResult.body.includes("notionPeekModeOverrideAssetBypass"));
+assert(desktopServiceWorkerResult.body.includes("e.pathname"));
+assert(
+  desktopServiceWorkerResult.body.includes(
+    'if(e.hostname!==this.hostname||e.pathname.startsWith("/image/")&&!e.searchParams.get("offline"))return!0;',
+  ),
+);
+assert.equal(desktopServiceWorkerResult.headers["Cache-Control"], "no-store");
+new Function(desktopServiceWorkerResult.body);
+
 const assetBody =
   'x;let i={table:"side_peek",board:"side_peek",calendar:"center_peek",list:"side_peek",gallery:"center_peek",timeline:"side_peek",page:"side_peek",chat:"side_peek"};const q="?pm=s";function Row({peekMode:u,openInNew:l}){return u}let fallback=(null==e?void 0:e.normalizedFormatStore.state.collection_peek_mode)??(o?r(476670).C9[o]:"side_peek");open({environment:t,store:i,peekMode:u,openInNew:l});openParent({from:"relation_property",peekMode:"side_peek"});const params={pm:"s"};y';
 const assetResult = runSurgeScript({

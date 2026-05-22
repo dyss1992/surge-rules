@@ -34,8 +34,19 @@
     /\/_assets\/(?:experimental\/)?[A-Za-z0-9]*Relation[A-Za-z0-9]*-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const TEXT_SIGNAL_PATTERN =
     /collection_peek_mode|side_peek|center_peek|full_page|relation_property|peekViewBlockId|peekMode:|peekModeParam:|openInSidePeek|openInCenterPeek|[?&]pm=|pm:\s*["']/;
-  const SERVICE_WORKER_BYPASS_SNIPPET =
-    'if(/^\\/_assets\\/(?:experimental\\/)?(?:(?:27899|61315|67426|67535|71688)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\\.js$/.test(r.pathname))return!0;';
+  const SERVICE_WORKER_ASSET_PATH_PATTERN =
+    '^\\/_assets\\/(?:experimental\\/)?(?:(?:27899|61315|67426|67535|71688)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\\.js$';
+  const SERVICE_WORKER_BYPASS_PATCHES = [
+    {
+      marker: /if\(r\.hostname!==this\.hostname\)return!0;/,
+      snippet: `let notionPeekModeOverrideAssetBypass=1;if(/${SERVICE_WORKER_ASSET_PATH_PATTERN}/.test(r.pathname))return!0;`,
+    },
+    {
+      marker:
+        /if\(e\.hostname!==this\.hostname\|\|e\.pathname\.startsWith\("\/image\/"\)&&!e\.searchParams\.get\("offline"\)\)return!0;/,
+      snippet: `let notionPeekModeOverrideAssetBypass=1;if(/${SERVICE_WORKER_ASSET_PATH_PATTERN}/.test(e.pathname))return!0;`,
+    },
+  ];
 
   function decodeArg(value) {
     try {
@@ -697,13 +708,12 @@
       return { changed: false, body };
     }
 
-    const marker = /if\(r\.hostname!==this\.hostname\)return!0;/;
-    if (!marker.test(body)) return { changed: false, body };
-    const next = body.replace(
-      marker,
-      match => `${match}let notionPeekModeOverrideAssetBypass=1;${SERVICE_WORKER_BYPASS_SNIPPET}`,
-    );
-    return { changed: next !== body, body: next };
+    for (const patch of SERVICE_WORKER_BYPASS_PATCHES) {
+      if (!patch.marker.test(body)) continue;
+      const next = body.replace(patch.marker, match => `${match}${patch.snippet}`);
+      return { changed: next !== body, body: next };
+    }
+    return { changed: false, body };
   }
 
   function getBody() {
