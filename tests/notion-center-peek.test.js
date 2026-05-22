@@ -218,15 +218,15 @@ assert(assetResult.body.includes('function Row({peekMode:u,openInNew:l})'));
 assert(assetResult.body.includes('open({environment:t,store:i,peekMode:"center_peek",openInNew'));
 assert(assetResult.body.includes('openParent({from:"relation_property",peekMode:"center_peek"})'));
 assert(assetResult.body.includes('pm:"c"'));
+assert.equal(assetResult.headers["Cache-Control"], "no-store");
+assert.equal(assetResult.headers.Pragma, "no-cache");
+assert.equal(assetResult.headers.Expires, "0");
 
 const runtimeAssetResult = runSurgeScript({
   request: { url: "https://www.notion.so/_assets/67426-b75a8a2b8268549d.js", method: "GET" },
   response: { status: 200, headers: { "content-type": "text/javascript" }, body: assetBody },
 });
-assert(runtimeAssetResult.body, "runtime asset body should be changed");
-assert(runtimeAssetResult.body.includes('table:"center_peek"'));
-assert(runtimeAssetResult.body.includes('??(o?r(476670).C9[o]:"center_peek")'));
-assert(runtimeAssetResult.body.includes('pm:"c"'));
+assert.deepEqual(runtimeAssetResult, {}, "large runtime asset should be skipped");
 
 const experimentalRuntimeAssetResult = runSurgeScript({
   request: {
@@ -235,8 +235,11 @@ const experimentalRuntimeAssetResult = runSurgeScript({
   },
   response: { status: 200, headers: { "content-type": "text/javascript" }, body: assetBody },
 });
-assert(experimentalRuntimeAssetResult.body, "experimental runtime asset body should be changed");
-assert(experimentalRuntimeAssetResult.body.includes('pm:"c"'));
+assert.deepEqual(
+  experimentalRuntimeAssetResult,
+  {},
+  "experimental large runtime asset should be skipped",
+);
 
 const navigationActionAsset =
   'let p=(0,a(374743).Ay)({store:c,openInSidePeek:!0,peekViewBlockId:c.id,peekMode:"s",pageVisitSource:d});let q=(0,a(453573).Lm)({workflowId:o.workflowId,peekModeParam:"s",scrollToBlockId:void 0});let keep=function({openInSidePeek:e}){return e};';
@@ -265,7 +268,7 @@ new Function(navigationActionResult.body);
 const functionParameterAsset =
   'function n({environment:e,store:t,pageVisitSource:r,visitType:l,openInNew:s,peekMode:d,redirect:c}){return d}function q({environment:e,store:t,peekMode:d,openInNew:s}){return d}open({environment:e,store:t,peekMode:d,openInNew:s});';
 const functionParameterResult = runSurgeScript({
-  request: { url: "https://www.notion.so/_assets/67426-b75a8a2b8268549d.js", method: "GET" },
+  request: { url: "https://www.notion.so/_assets/61315-155b15305540931a.js", method: "GET" },
   response: {
     status: 200,
     headers: { "content-type": "text/javascript" },
@@ -287,7 +290,7 @@ new Function(functionParameterResult.body);
 const destructuringAsset =
   'function r(e){let{environment:n,store:a,mainEditorCurrentBlockStore:l,peekCollectionData:s,fullyQualified:d,overridePeekMode:c,showMoveTo:u}=e;return c}function o(e){let{environment:r,store:o,peekMode:p,openInNew:a}=e;return p}open({environment:e,store:t,peekMode:d,openInNew:s});';
 const destructuringResult = runSurgeScript({
-  request: { url: "https://www.notion.so/_assets/67426-b75a8a2b8268549d.js", method: "GET" },
+  request: { url: "https://www.notion.so/_assets/61315-155b15305540931a.js", method: "GET" },
   response: {
     status: 200,
     headers: { "content-type": "text/javascript" },
@@ -484,8 +487,8 @@ const assetResponsePattern = new RegExp(assetResponsePatternMatch[1]);
 assert(assetResponsePattern.test("https://www.notion.so/_assets/61315-155b15305540931a.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/71688-e34e6503c2f2c1ee.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/67535-696bada3b43698b0.js"));
-assert(assetResponsePattern.test("https://www.notion.so/_assets/67426-b75a8a2b8268549d.js"));
-assert(assetResponsePattern.test("https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js"));
+assert(!assetResponsePattern.test("https://www.notion.so/_assets/67426-b75a8a2b8268549d.js"));
+assert(!assetResponsePattern.test("https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/RelationPropertyWithEdges-e8ca79f7e53b5a56.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/experimental/RelationPropertyWithEdges-e8ca79f7e53b5a56.js"));
 assert(assetResponsePattern.test("https://www.notion.so/_assets/RelationMenuRow-deb278cf92066cae.js"));
@@ -508,7 +511,7 @@ assert(smallActionAssetPatternMatch, "small action asset response script pattern
 const smallActionAssetPattern = new RegExp(smallActionAssetPatternMatch[1]);
 assert(smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js"));
 assert(smallActionAssetPattern.test("https://www.notion.so/_assets/27899-594a45964d4c8fd7.js"));
-assert(smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/12585-a5a0874e138981cc.js"));
+assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/12585-a5a0874e138981cc.js"));
 assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/11327-d3dff4d8b6679a0a.js"));
 assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/39340-b0b3477aa7434c09.js"));
 assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/9832-bdc8c32e063e8220.js"));
