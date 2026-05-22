@@ -508,9 +508,19 @@ assert(smallActionAssetPatternMatch, "small action asset response script pattern
 const smallActionAssetPattern = new RegExp(smallActionAssetPatternMatch[1]);
 assert(smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js"));
 assert(smallActionAssetPattern.test("https://www.notion.so/_assets/27899-594a45964d4c8fd7.js"));
+assert(smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/12585-a5a0874e138981cc.js"));
+assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/11327-d3dff4d8b6679a0a.js"));
+assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/39340-b0b3477aa7434c09.js"));
+assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/9832-bdc8c32e063e8220.js"));
 assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/experimental/67426-2387a9ecde07c3b1.js"));
 assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
 assert(!smallActionAssetPattern.test("https://www.notion.so/_assets/notion.css"));
+
+const smallActionMaxSizeMatch = moduleSource.match(
+  /notion-peek-small-action-asset-response = .*max-size=([0-9]+)/,
+);
+assert(smallActionMaxSizeMatch, "small action asset max-size should exist");
+assert.strictEqual(smallActionMaxSizeMatch[1], "786432");
 const mitmHostnameMatch = moduleSource.match(/^hostname\s*=\s*(.*)$/m);
 assert(mitmHostnameMatch, "MITM hostname line should exist");
 assert(

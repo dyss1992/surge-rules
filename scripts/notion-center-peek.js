@@ -18,14 +18,14 @@
   const BODY_TYPES = new Set(["string", "object"]);
   const JSON_BODY_LIMIT = 3 * 1024 * 1024;
   const ASSET_BODY_LIMIT = 4 * 1024 * 1024;
-  const SMALL_NUMERIC_ASSET_BODY_LIMIT = 512 * 1024;
+  const NUMERIC_ACTION_ASSET_BODY_LIMIT = 768 * 1024;
   const API_RESPONSE_PATTERN =
     /\/api\/v3\/(?:loadPageChunk|loadCachedPageChunkV2|queryCollection|syncRecordValues|syncRecordValuesSpaceInitial|getCollectionData|getRecordValues|getPublicPageData)(?:$|[/?#])/;
   const SAVE_TRANSACTIONS_PATTERN = /\/api\/v3\/saveTransactions(?:Fanout)?(?:$|[/?#])/;
   const ASSET_WHITELIST_PATTERN =
     /\/_assets\/(?:experimental\/)?(?:(?:61315|71688|67535|67426)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
-  const SMALL_NUMERIC_ASSET_PATTERN =
-    /\/_assets\/(?:experimental\/)?(?!(?:61315|71688|67535|67426)-)[0-9]+-[A-Za-z0-9]+\.js(?:$|[?#])/;
+  const NUMERIC_ACTION_ASSET_PATTERN =
+    /\/_assets\/(?:experimental\/)?(?:12585|27899)-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const RELATION_ASSET_PATTERN =
     /\/_assets\/(?:experimental\/)?[A-Za-z0-9]*Relation[A-Za-z0-9]*-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const TEXT_SIGNAL_PATTERN =
@@ -125,17 +125,17 @@
   function isWhitelistedAssetUrl(url) {
     return (
       typeof url === "string" &&
-      (ASSET_WHITELIST_PATTERN.test(url) || SMALL_NUMERIC_ASSET_PATTERN.test(url))
+      (ASSET_WHITELIST_PATTERN.test(url) || NUMERIC_ACTION_ASSET_PATTERN.test(url))
     );
   }
 
   function getAssetBodyLimit(url) {
     if (
       typeof url === "string" &&
-      SMALL_NUMERIC_ASSET_PATTERN.test(url) &&
+      NUMERIC_ACTION_ASSET_PATTERN.test(url) &&
       !ASSET_WHITELIST_PATTERN.test(url)
     ) {
-      return SMALL_NUMERIC_ASSET_BODY_LIMIT;
+      return NUMERIC_ACTION_ASSET_BODY_LIMIT;
     }
     return ASSET_BODY_LIMIT;
   }
