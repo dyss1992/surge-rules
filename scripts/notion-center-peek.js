@@ -19,9 +19,11 @@
   const JSON_BODY_LIMIT = 3 * 1024 * 1024;
   const ASSET_BODY_LIMIT = 4 * 1024 * 1024;
   const NUMERIC_ACTION_ASSET_BODY_LIMIT = 768 * 1024;
+  const SERVICE_WORKER_BODY_LIMIT = 256 * 1024;
   const API_RESPONSE_PATTERN =
     /\/api\/v3\/(?:loadPageChunk|loadCachedPageChunkV2|queryCollection|syncRecordValues|syncRecordValuesSpaceInitial|getCollectionData|getRecordValues|getPublicPageData)(?:$|[/?#])/;
   const SAVE_TRANSACTIONS_PATTERN = /\/api\/v3\/saveTransactions(?:Fanout)?(?:$|[/?#])/;
+  const SERVICE_WORKER_PATTERN = /\/sw\.js(?:$|[?#])/;
   const ASSET_WHITELIST_PATTERN =
     /\/_assets\/(?:experimental\/)?(?:(?:61315|71688|67535|67426)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\.js(?:$|[?#])/;
   const RUNTIME_ACTION_ASSET_PATTERN =
@@ -32,6 +34,8 @@
     /\/_assets\/(?:experimental\/)?[A-Za-z0-9]*Relation[A-Za-z0-9]*-[A-Za-z0-9]+\.js(?:$|[?#])/;
   const TEXT_SIGNAL_PATTERN =
     /collection_peek_mode|side_peek|center_peek|full_page|relation_property|peekViewBlockId|peekMode:|peekModeParam:|openInSidePeek|openInCenterPeek|[?&]pm=|pm:\s*["']/;
+  const SERVICE_WORKER_BYPASS_SNIPPET =
+    'if(/^\\/_assets\\/(?:experimental\\/)?(?:(?:27899|61315|67426|67535|71688)-[A-Za-z0-9]+|(?:[A-Za-z0-9]*Relation[A-Za-z0-9]*|CollectionViewBlock|BlockPropertyRouter|peekRenderer|PagePropertiesRowNameMenu|RecordStore|formPropertyRenderer|RollupPropertyMenu|PropertyModulePersonProperty)-[A-Za-z0-9]+)\\.js$/.test(r.pathname))return!0;';
 
   function decodeArg(value) {
     try {
@@ -144,6 +148,10 @@
     );
   }
 
+  function isServiceWorkerUrl(url) {
+    return typeof url === "string" && SERVICE_WORKER_PATTERN.test(url);
+  }
+
   function isWhitelistedAssetUrl(url) {
     return (
       typeof url === "string" &&
@@ -179,6 +187,18 @@
       changed: true,
       headers: setHeader(headers, "Accept-Encoding", "identity"),
     };
+  }
+
+  function patchServiceWorkerRequestHeaders(url, headers) {
+    if (!isServiceWorkerUrl(url)) return { changed: false, headers };
+    let next = setHeader(headers, "Accept-Encoding", "identity");
+    next = setHeader(next, "Cache-Control", "no-cache");
+    next = setHeader(next, "Pragma", "no-cache");
+    const changed =
+      getHeader(headers, "Accept-Encoding").toLowerCase() !== "identity" ||
+      getHeader(headers, "Cache-Control").toLowerCase() !== "no-cache" ||
+      getHeader(headers, "Pragma").toLowerCase() !== "no-cache";
+    return { changed, headers: next };
   }
 
   function shouldPatchJsonBody(body, url, headers) {
@@ -659,6 +679,33 @@
     return { changed: next !== body, body: next };
   }
 
+  function patchServiceWorkerBody(body, url, headers) {
+    if (typeof body !== "string") return { changed: false, body };
+    if (!isServiceWorkerUrl(url)) return { changed: false, body };
+    if (body.length > SERVICE_WORKER_BODY_LIMIT) return { changed: false, body };
+
+    const contentType = getHeader(headers, "content-type").toLowerCase();
+    if (
+      contentType &&
+      !contentType.includes("javascript") &&
+      !contentType.includes("ecmascript") &&
+      !contentType.includes("text/plain")
+    ) {
+      return { changed: false, body };
+    }
+    if (body.includes("notionPeekModeOverrideAssetBypass")) {
+      return { changed: false, body };
+    }
+
+    const marker = /if\(r\.hostname!==this\.hostname\)return!0;/;
+    if (!marker.test(body)) return { changed: false, body };
+    const next = body.replace(
+      marker,
+      match => `${match}let notionPeekModeOverrideAssetBypass=1;${SERVICE_WORKER_BYPASS_SNIPPET}`,
+    );
+    return { changed: next !== body, body: next };
+  }
+
   function getBody() {
     if (typeof $response !== "undefined" && $response && BODY_TYPES.has(typeof $response.body)) {
       return { kind: "response", body: $response.body };
@@ -683,9 +730,15 @@
   let changed = false;
 
   if (typeof $request !== "undefined" && $request && $request.url) {
-    const headerResult = patchRuntimeAssetRequestHeaders($request.url, $request.headers || {});
+    const headerResult = patchServiceWorkerRequestHeaders($request.url, $request.headers || {});
     if (headerResult.changed) {
       result.headers = headerResult.headers;
+      changed = true;
+    }
+
+    const assetHeaderResult = patchRuntimeAssetRequestHeaders($request.url, result.headers || $request.headers || {});
+    if (assetHeaderResult.changed) {
+      result.headers = assetHeaderResult.headers;
       changed = true;
     }
 
@@ -702,12 +755,18 @@
       typeof $request !== "undefined" && $request ? $request.url : undefined;
     const headers = getMessageHeaders(bodyInfo.kind);
     const jsonResult = patchJsonBody(bodyInfo.body, requestUrl, headers);
-    const bodyResult = jsonResult.changed
+    const serviceWorkerResult = jsonResult.changed
       ? jsonResult
+      : patchServiceWorkerBody(bodyInfo.body, requestUrl, headers);
+    const bodyResult = serviceWorkerResult.changed
+      ? serviceWorkerResult
       : patchTextBody(bodyInfo.body, requestUrl, headers);
     if (bodyResult.changed) {
       result.body = bodyResult.body;
-      if (bodyInfo.kind === "response" && isWhitelistedAssetUrl(requestUrl)) {
+      if (
+        bodyInfo.kind === "response" &&
+        (isWhitelistedAssetUrl(requestUrl) || isServiceWorkerUrl(requestUrl))
+      ) {
         result.headers = withNoStoreHeaders(headers);
       }
       changed = true;

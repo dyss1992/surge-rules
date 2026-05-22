@@ -216,6 +216,35 @@ assert.equal(
   "identity",
 );
 
+const serviceWorkerRequestResult = runSurgeScript({
+  request: {
+    url: "https://www.notion.so/sw.js",
+    method: "GET",
+    headers: { "Accept-Encoding": "gzip, deflate, br, zstd" },
+  },
+});
+assert(serviceWorkerRequestResult.headers, "service worker request headers should change");
+assert.equal(serviceWorkerRequestResult.headers["Accept-Encoding"], "identity");
+assert.equal(serviceWorkerRequestResult.headers["Cache-Control"], "no-cache");
+assert.equal(serviceWorkerRequestResult.headers.Pragma, "no-cache");
+
+const serviceWorkerBody =
+  'class S{shouldBypassCache(t){if("GET"!==t.method)return!0;let r=new URL(t.url);if(r.hostname!==this.hostname)return!0;if(this.assetsJson){for(let t of this.assetsJson.proxyServerPathPrefixes??[])if(r.pathname.startsWith(t))return!0}return!1}async matchRequest(t){return fetch(t)}}';
+const serviceWorkerResult = runSurgeScript({
+  request: { url: "https://www.notion.so/sw.js", method: "GET" },
+  response: {
+    status: 200,
+    headers: { "content-type": "application/javascript" },
+    body: serviceWorkerBody,
+  },
+});
+assert(serviceWorkerResult.body, "service worker body should be changed");
+assert(serviceWorkerResult.body.includes("notionPeekModeOverrideAssetBypass"));
+assert(serviceWorkerResult.body.includes("27899|61315|67426"));
+assert(serviceWorkerResult.body.includes("if(r.hostname!==this.hostname)return!0;"));
+assert.equal(serviceWorkerResult.headers["Cache-Control"], "no-store");
+new Function(serviceWorkerResult.body);
+
 const assetBody =
   'x;let i={table:"side_peek",board:"side_peek",calendar:"center_peek",list:"side_peek",gallery:"center_peek",timeline:"side_peek",page:"side_peek",chat:"side_peek"};const q="?pm=s";function Row({peekMode:u,openInNew:l}){return u}let fallback=(null==e?void 0:e.normalizedFormatStore.state.collection_peek_mode)??(o?r(476670).C9[o]:"side_peek");open({environment:t,store:i,peekMode:u,openInNew:l});openParent({from:"relation_property",peekMode:"side_peek"});const params={pm:"s"};y';
 const assetResult = runSurgeScript({
@@ -423,6 +452,48 @@ assert(customNavigationActionResult.body.includes("openInSidePeek:!1"));
 assert(customNavigationActionResult.body.includes('peekMode:"f"'));
 assert(customNavigationActionResult.body.includes('peekModeParam:"f"'));
 
+const sideArgument =
+  "target_mode=side_peek&collection_view_mode=target&relation_property_mode=target&fallback_peek_mode=target&client_open_mode=target&url_pm=auto";
+const sideResponseResult = runSurgeScript({
+  request: { url: "https://www.notion.so/api/v3/loadPageChunk", method: "POST" },
+  response: { status: 200, headers: {}, body: JSON.stringify(loadPageResponse) },
+  argument: sideArgument,
+});
+assert.equal(
+  JSON.parse(sideResponseResult.body).recordMap.collection_view.a.value.format.collection_peek_mode,
+  "side_peek",
+);
+const centerNavigationActionAsset =
+  'let p=(0,a(374743).Ay)({store:c,openInCenterPeek:!0,peekViewBlockId:c.id,peekMode:"c",pageVisitSource:d});let q=(0,a(453573).Lm)({workflowId:o.workflowId,peekModeParam:"c",scrollToBlockId:void 0});let keep=function({openInSidePeek:e}){return e};';
+const sideAssetResult = runSurgeScript({
+  request: { url: "https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js", method: "GET" },
+  response: { status: 200, headers: { "content-type": "application/javascript" }, body: centerNavigationActionAsset },
+  argument: sideArgument,
+});
+assert(sideAssetResult.body.includes("openInSidePeek:!0"));
+assert(sideAssetResult.body.includes('peekMode:"s"'));
+assert(sideAssetResult.body.includes('peekModeParam:"s"'));
+
+const fullPageArgument =
+  "target_mode=full_page&collection_view_mode=target&relation_property_mode=target&fallback_peek_mode=target&client_open_mode=target&url_pm=auto";
+const fullPageResponseResult = runSurgeScript({
+  request: { url: "https://www.notion.so/api/v3/loadPageChunk", method: "POST" },
+  response: { status: 200, headers: {}, body: JSON.stringify(loadPageResponse) },
+  argument: fullPageArgument,
+});
+assert.equal(
+  JSON.parse(fullPageResponseResult.body).recordMap.collection_view.a.value.format.collection_peek_mode,
+  "full_page",
+);
+const fullPageAssetResult = runSurgeScript({
+  request: { url: "https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js", method: "GET" },
+  response: { status: 200, headers: { "content-type": "application/javascript" }, body: navigationActionAsset },
+  argument: fullPageArgument,
+});
+assert(fullPageAssetResult.body.includes("openInSidePeek:!1"));
+assert(fullPageAssetResult.body.includes('peekMode:"f"'));
+assert(fullPageAssetResult.body.includes('peekModeParam:"f"'));
+
 const relationAssetBody =
   'let z=j&&e?j.getFormatStore().getKeyValue("collection_peek_mode")??n(476670).C9[e]:n(475097).default.state.mode;(0,n(553180).V)({environment:t,store:i,peekMode:u,openInNew:l,resultsStore:r,peekCollectionData:d,pageVisitSource:n(254656).y8.PeekOpen});let d=(0,n(234310).A)({pageId:c.id,pageModel:e,baseUrl:t,peekViewBlockId:u.id,pageVisitSource:n(254656).y8.MentionInPage});let q=(0,n(234310).A)({pageId:c.id,pageModel:e,baseUrl:t,peekViewBlockId:u.id,peekMode:(0,n(328823).f)("full_page"===l?void 0:l??n(475097).default.state.mode),pageVisitSource:n(254656).y8.MentionInPage})';
 const relationAssetResult = runSurgeScript({
@@ -495,6 +566,22 @@ assert(assetRequestPattern.test("https://www.notion.so/_assets/experimental/6742
 assert(assetRequestPattern.test("https://www.notion.so/_assets/67426-b75a8a2b8268549d.js"));
 assert(!assetRequestPattern.test("https://www.notion.so/_assets/experimental/27899-594a45964d4c8fd7.js"));
 assert(!assetRequestPattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
+
+const serviceWorkerRequestPatternMatch = moduleSource.match(
+  /notion-peek-service-worker-request = .*pattern=([^,]+)/,
+);
+assert(serviceWorkerRequestPatternMatch, "service worker request script pattern should exist");
+const serviceWorkerRequestPattern = new RegExp(serviceWorkerRequestPatternMatch[1]);
+assert(serviceWorkerRequestPattern.test("https://www.notion.so/sw.js"));
+assert(!serviceWorkerRequestPattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
+
+const serviceWorkerResponsePatternMatch = moduleSource.match(
+  /notion-peek-service-worker-response = .*pattern=([^,]+)/,
+);
+assert(serviceWorkerResponsePatternMatch, "service worker response script pattern should exist");
+const serviceWorkerResponsePattern = new RegExp(serviceWorkerResponsePatternMatch[1]);
+assert(serviceWorkerResponsePattern.test("https://www.notion.so/sw.js"));
+assert(!serviceWorkerResponsePattern.test("https://www.notion.so/_assets/app-f37b78ccba80bafb.js"));
 
 const saveRequestPatternMatch = moduleSource.match(/notion-peek-save-request = .*pattern=([^,]+)/);
 assert(saveRequestPatternMatch, "save request script pattern should exist in module");

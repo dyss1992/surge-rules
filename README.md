@@ -13,8 +13,9 @@ It works by rewriting Notion HTTPS traffic after Surge MITM decryption:
 - Notion peek URLs using `pm` are changed to the configured URL mode
 - Notion frontend defaults for database, relation, no-view fallback, and matched open calls are patched toward the configured modes when they are present in the asset whitelist
 - explicit frontend actions such as `Open in side peek` are redirected toward the configured client open mode
+- Notion's Service Worker is patched so the small set of peek-related frontend files is fetched from the network instead of being reused from Notion's local frontend cache
 
-The request-side rules are intentionally split between Notion's save endpoint, peek URLs, and the confirmed runtime page-open chunk `67426-*`. The response-side rules are limited to page/database loading endpoints plus a semantic whitelist of frontend chunks whose names relate to Relation pages, peek rendering, database views, and page properties. Legacy chunk IDs (`61315-*`, `71688-*`, and `67535-*`) are still included for older cached Notion builds. Confirmed numeric action chunks are limited to the small row-open chunk `27899-*` and the current runtime page-open chunk `67426-*`; the module still skips unrelated large numeric chunks instead of processing the whole Notion frontend.
+The request-side rules are intentionally split between Notion's Service Worker, Notion's save endpoint, peek URLs, and the confirmed runtime page-open chunk `67426-*`. The response-side rules are limited to the Service Worker, page/database loading endpoints, and a semantic whitelist of frontend chunks whose names relate to Relation pages, peek rendering, database views, and page properties. Legacy chunk IDs (`61315-*`, `71688-*`, and `67535-*`) are still included for older cached Notion builds. Confirmed numeric action chunks are limited to the small row-open chunk `27899-*` and the current runtime page-open chunk `67426-*`; the module still skips unrelated large numeric chunks instead of processing the whole Notion frontend.
 
 ### Request Scope
 
@@ -22,6 +23,7 @@ Processed:
 
 - `api/v3/loadPageChunk`, `loadCachedPageChunkV2`, `queryCollection`, `syncRecordValues`, `syncRecordValuesSpaceInitial`, `getCollectionData`, `getRecordValues`, and `getPublicPageData`
 - `api/v3/saveTransactions` and `api/v3/saveTransactionsFanout`
+- `sw.js`, only to keep the peek-related frontend files from being served out of Notion's Service Worker cache
 - Notion URLs that already include a `pm` peek parameter
 - the request for the confirmed runtime page-open chunk `67426-*`, where the module asks Notion for an uncompressed response so Surge can safely rewrite it
 - whitelisted Notion frontend chunks under `_assets/` and `_assets/experimental/`:
@@ -34,9 +36,10 @@ Processed:
 Skipped:
 
 - unrelated Notion API calls, including telemetry and AI/background endpoints
+- unrelated Service Worker behavior; the module only changes cache handling for the same peek-related frontend files listed above
 - generic `_assets/` files such as app bundles, framework bundles, CSS, images, fonts, source maps, unconfirmed large numeric JS chunks, and unrelated JS chunks
 - responses whose content type, size, URL, or text content clearly does not need peek-mode rewriting
-- large API responses above 3 MiB, whitelisted frontend asset responses above 4 MiB, and the small `27899-*` action chunk above 768 KiB
+- large API responses above 3 MiB, whitelisted frontend asset responses above 4 MiB, the small `27899-*` action chunk above 768 KiB, and Service Worker responses above 256 KiB
 
 ### Install
 
@@ -46,7 +49,7 @@ Import this module in Surge:
 https://raw.githubusercontent.com/dyss1992/surge-rules/main/modules/notion-center-peek.sgmodule
 ```
 
-Then reload Surge and refresh or restart Notion.
+Then reload Surge, update the module resource, and refresh or restart Notion.
 
 ### First-Run Checklist
 
@@ -63,7 +66,7 @@ For a new user, use this order:
    - `pm=s` means side peek
    - `pm=f` means full page
 
-If it still opens with the old mode, the most common cause is cached Notion frontend files. This module marks rewritten Notion frontend chunks as `no-store`, so after this version is installed, future parameter changes should usually need only a Notion restart or page reload. If an older rewritten chunk is already cached, do a one-time cache clear: quit Notion, clear only Notion's frontend cache / Service Worker cache, then reopen Notion while Surge is already enabled. Do not clear cookies, local storage, IndexedDB, or account data unless you intentionally want to sign in again.
+If it still opens with the old mode, the most common cause is cached Notion frontend files. This module marks rewritten Notion frontend chunks as `no-store` and also patches Notion's Service Worker so the covered peek-related chunks are fetched from the network. After this version is installed and the patched Service Worker has been loaded once, future parameter changes should usually need only a Surge reload/resource update plus a Notion restart or page reload. If an older Service Worker is still active, do a one-time frontend cache clear: quit Notion, clear only Notion's frontend cache / Service Worker cache, then reopen Notion while Surge is already enabled. Do not clear cookies, local storage, IndexedDB, or account data unless you intentionally want to sign in again.
 
 On macOS, the relevant cache folders are usually under:
 
